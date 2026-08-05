@@ -9,6 +9,8 @@ export default function Login() {
   const navigate = useNavigate()
   const location = useLocation()
   const [email, setEmail] = useState('')
+  const [rollNo, setRollNo] = useState('')
+  const [role, setRole] = useState('parent')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -20,7 +22,17 @@ export default function Login() {
     setError('')
     setLoading(true)
     try {
-      await login(email, password)
+      if (isMockAuth) {
+        await login(email, password)
+      } else {
+        const cleanRollNo = rollNo.trim().toUpperCase()
+        if (!cleanRollNo) {
+          setError('Please enter a roll number.')
+          setLoading(false)
+          return
+        }
+        await login(`${cleanRollNo}-${role}@spark.local`, password)
+      }
       navigate(from, { replace: true })
     } catch (err) {
       setError(err.message || 'Could not log in. Please try again.')
@@ -53,18 +65,63 @@ export default function Login() {
         <p className="text-center text-sm text-spark-ink/50 mb-7">Log in to your SPARK account</p>
 
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-          <div>
-            <label htmlFor="email" className="text-xs font-semibold text-spark-ink/50 mb-1.5 block">Email</label>
-            <input
-              id="email"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border border-spark-ink/10 focus:border-spark-orange outline-none transition-colors"
-              placeholder="you@example.com"
-            />
-          </div>
+          {isMockAuth ? (
+            <div>
+              <label htmlFor="email" className="text-xs font-semibold text-spark-ink/50 mb-1.5 block">Email</label>
+              <input
+                id="email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-spark-ink/10 focus:border-spark-orange outline-none transition-colors"
+                placeholder="you@example.com"
+              />
+            </div>
+          ) : (
+            <>
+              <div>
+                <label htmlFor="rollNo" className="text-xs font-semibold text-spark-ink/50 mb-1.5 block">Roll Number</label>
+                <input
+                  id="rollNo"
+                  type="text"
+                  required
+                  value={rollNo}
+                  onChange={(e) => setRollNo(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-spark-ink/10 focus:border-spark-orange outline-none transition-colors uppercase"
+                  placeholder="e.g. SPK002"
+                  autoCapitalize="characters"
+                />
+              </div>
+              <div>
+                <span className="text-xs font-semibold text-spark-ink/50 mb-1.5 block">I am the</span>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setRole('parent')}
+                    className={`py-3 rounded-xl border font-semibold text-sm transition-colors ${
+                      role === 'parent'
+                        ? 'border-spark-orange bg-spark-orange/10 text-spark-orange'
+                        : 'border-spark-ink/10 text-spark-ink/60'
+                    }`}
+                  >
+                    Parent
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRole('student')}
+                    className={`py-3 rounded-xl border font-semibold text-sm transition-colors ${
+                      role === 'student'
+                        ? 'border-spark-orange bg-spark-orange/10 text-spark-orange'
+                        : 'border-spark-ink/10 text-spark-ink/60'
+                    }`}
+                  >
+                    Student
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
           <div>
             <label htmlFor="password" className="text-xs font-semibold text-spark-ink/50 mb-1.5 block">Password</label>
             <input
