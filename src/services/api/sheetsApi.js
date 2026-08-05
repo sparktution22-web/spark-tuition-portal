@@ -5,23 +5,21 @@
 // shaped identically, so every page in this app already works end-to-end and
 // needs zero changes when the real backend is connected.
 import { STUDENTS, generateAttendance, generateFees, generateMarks, NOTIFICATIONS, ANNOUNCEMENTS } from './mockData.js'
-
 const SCRIPT_URL = import.meta.env.VITE_GOOGLE_SCRIPT_URL
 const USE_MOCK = !SCRIPT_URL
-
 async function callScript(action, params = {}) {
   const url = new URL(SCRIPT_URL)
   url.searchParams.set('action', action)
   Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v))
   const res = await fetch(url.toString())
   if (!res.ok) throw new Error(`Apps Script request failed: ${action}`)
-  return res.json()
+  const json = await res.json()
+  if (!json.success) throw new Error(json.error || `Apps Script error: ${action}`)
+  return json.data
 }
-
 function delay(ms = 250) {
   return new Promise((res) => setTimeout(res, ms))
 }
-
 export async function getStudents() {
   if (USE_MOCK) {
     await delay()
@@ -29,7 +27,6 @@ export async function getStudents() {
   }
   return callScript('getStudents')
 }
-
 export async function getStudentById(id) {
   if (USE_MOCK) {
     await delay()
@@ -37,7 +34,6 @@ export async function getStudentById(id) {
   }
   return callScript('getStudentById', { id })
 }
-
 export async function getAttendance(studentId, month = '2026-08') {
   if (USE_MOCK) {
     await delay()
@@ -45,7 +41,6 @@ export async function getAttendance(studentId, month = '2026-08') {
   }
   return callScript('getAttendance', { studentId, month })
 }
-
 export async function getFees(studentId) {
   if (USE_MOCK) {
     await delay()
@@ -53,7 +48,6 @@ export async function getFees(studentId) {
   }
   return callScript('getFees', { studentId })
 }
-
 export async function getMarks(studentId) {
   if (USE_MOCK) {
     await delay()
@@ -61,7 +55,6 @@ export async function getMarks(studentId) {
   }
   return callScript('getMarks', { studentId })
 }
-
 export async function getNotifications() {
   if (USE_MOCK) {
     await delay()
@@ -69,7 +62,6 @@ export async function getNotifications() {
   }
   return callScript('getNotifications')
 }
-
 export async function getAnnouncements() {
   if (USE_MOCK) {
     await delay()
@@ -77,7 +69,6 @@ export async function getAnnouncements() {
   }
   return callScript('getAnnouncements')
 }
-
 // Write operations (admin only). In mock mode these resolve without
 // persisting — swap in real POSTs to the Apps Script doPost() handler.
 export async function addStudent(student) {
@@ -91,7 +82,6 @@ export async function addStudent(student) {
   })
   return res.json()
 }
-
 export async function updateStudent(id, updates) {
   if (USE_MOCK) {
     await delay()
@@ -103,7 +93,6 @@ export async function updateStudent(id, updates) {
   })
   return res.json()
 }
-
 export async function deleteStudent(id) {
   if (USE_MOCK) {
     await delay()
@@ -115,5 +104,4 @@ export async function deleteStudent(id) {
   })
   return res.json()
 }
-
 export const isMockMode = USE_MOCK
