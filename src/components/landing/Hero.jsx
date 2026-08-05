@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import { Link } from 'react-router-dom'
 import ReportCardPreview from './ReportCardPreview.jsx'
 
 const headline = ['Every class,', 'every mark,', 'every rupee —', 'tracked in real time.']
@@ -63,18 +64,18 @@ export default function Hero() {
             transition={{ duration: 0.6, delay: 0.85 }}
             className="mt-9 flex flex-wrap items-center gap-4"
           >
-            <a
-              href="#register"
+            <Link
+              to="/register"
               className="px-7 py-3.5 rounded-full bg-spark-gradient text-white font-bold shadow-soft hover:shadow-card-hover hover:-translate-y-0.5 transition-all"
             >
               Get started free
-            </a>
-            <a
-              href="#login"
+            </Link>
+            <Link
+              to="/login"
               className="px-7 py-3.5 rounded-full border-2 border-spark-ink/10 font-bold text-spark-ink hover:border-spark-orange hover:text-spark-orange transition-colors"
             >
               Log in
-            </a>
+            </Link>
           </motion.div>
 
           <motion.p

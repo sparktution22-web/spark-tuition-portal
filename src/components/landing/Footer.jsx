@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import sparkLogo from '../../assets/spark-logo.png'
 import { FiMail, FiPhone, FiMapPin } from 'react-icons/fi'
 
@@ -24,9 +25,9 @@ export default function Footer() {
         <div>
           <h4 className="text-white font-display font-bold text-sm mb-4">Roles</h4>
           <ul className="space-y-2 text-sm">
-            <li><a href="#login" className="hover:text-spark-orange transition-colors">Admin login</a></li>
-            <li><a href="#login" className="hover:text-spark-orange transition-colors">Parent login</a></li>
-            <li><a href="#login" className="hover:text-spark-orange transition-colors">Student login</a></li>
+            <li><Link to="/login" className="hover:text-spark-orange transition-colors">Admin login</Link></li>
+            <li><Link to="/login" className="hover:text-spark-orange transition-colors">Parent login</Link></li>
+            <li><Link to="/login" className="hover:text-spark-orange transition-colors">Student login</Link></li>
           </ul>
         </div>
 

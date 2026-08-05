@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
+import { Link } from 'react-router-dom'
 import sparkLogo from '../../assets/spark-logo.png'
 
 const NAV_LINKS = [
@@ -35,9 +36,9 @@ export default function Navbar() {
             scrolled ? 'py-2 shadow-card' : 'py-3'
           }`}
         >
-          <a href="#" className="flex items-center gap-2 shrink-0" aria-label="SPARK home">
+          <Link to="/" className="flex items-center gap-2 shrink-0" aria-label="SPARK home">
             <img src={sparkLogo} alt="SPARK" className="h-8 sm:h-9 w-auto" />
-          </a>
+          </Link>
 
           <nav className="hidden md:flex items-center gap-7" aria-label="Primary">
             {NAV_LINKS.map((link) => (
@@ -52,18 +53,18 @@ export default function Navbar() {
           </nav>
 
           <div className="hidden md:flex items-center gap-3">
-            <a
-              href="#login"
+            <Link
+              to="/login"
               className="text-sm font-semibold px-4 py-2 rounded-full text-spark-ink/80 hover:text-spark-orange transition-colors"
             >
               Log in
-            </a>
-            <a
-              href="#register"
+            </Link>
+            <Link
+              to="/register"
               className="text-sm font-semibold px-5 py-2.5 rounded-full bg-spark-gradient text-white shadow-soft hover:shadow-card-hover hover:-translate-y-0.5 transition-all"
             >
               Register
-            </a>
+            </Link>
           </div>
 
           <button
@@ -104,15 +105,16 @@ export default function Navbar() {
               </a>
             ))}
             <div className="flex gap-3 pt-2">
-              <a href="#login" className="flex-1 text-center text-sm font-semibold px-4 py-2.5 rounded-full border border-spark-ink/10">
+              <Link to="/login" onClick={() => setMobileOpen(false)} className="flex-1 text-center text-sm font-semibold px-4 py-2.5 rounded-full border border-spark-ink/10">
                 Log in
-              </a>
-              <a
-                href="#register"
+              </Link>
+              <Link
+                to="/register"
+                onClick={() => setMobileOpen(false)}
                 className="flex-1 text-center text-sm font-semibold px-4 py-2.5 rounded-full bg-spark-gradient text-white"
               >
                 Register
-              </a>
+              </Link>
             </div>
           </motion.nav>
         )}
