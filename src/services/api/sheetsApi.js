@@ -191,25 +191,4 @@ export async function addMarks({ studentId, subject, score, testName, maxScore, 
   }
   return postScript_('addMarks', { studentId, subject, score, testName, maxScore, date })
 }
-// Combines holidays + test/important entries + recurring birthdays for a
-// given month ('YYYY-MM', defaults to current). Real mode reads from
-// Code.gs's hardcoded TN holiday list + the EVENTS sheet; mock mode has
-// no real calendar source yet so it returns an empty list.
-export async function getCalendarEvents(month) {
-  if (USE_MOCK) {
-    await delay()
-    return []
-  }
-  return callScript('getCalendarEvents', month ? { month } : {})
-}
-// Admin-only in the UI. For type 'Test' or 'Important': { type, date: 'dd.MM.yyyy', title }.
-// For type 'Birthday': { type: 'Birthday', studentId, date: 'dd.MM.yyyy' or 'MM-DD' } — stored
-// as MM-DD so it recurs every year automatically.
-export async function addEvent(event) {
-  if (USE_MOCK) {
-    await delay()
-    return { added: true, ...event }
-  }
-  return postScript_('addEvent', event)
-}
 export const isMockMode = USE_MOCK
