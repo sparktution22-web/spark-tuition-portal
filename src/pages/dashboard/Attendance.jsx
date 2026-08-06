@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { FiDownload, FiSearch } from 'react-icons/fi'
+import { useAuth } from '../../contexts/AuthContext.jsx'
 import { useStudentContext } from '../../contexts/StudentContext.jsx'
-import { getAttendance } from '../../services/api/sheetsApi.js'
+import { getAttendance, getAdminDashboard } from '../../services/api/sheetsApi.js'
 import { summarizeAttendance } from '../../utils/format.js'
 import StatCard from '../../components/StatCard.jsx'
 import StudentSwitcher from '../../components/StudentSwitcher.jsx'
@@ -23,7 +24,58 @@ const HEAT_COLOR = {
   Holiday: 'bg-spark-ink/10 dark:bg-white/10'
 }
 
+// Admin-only — consolidated centre-wide Today / This Week / This Month
+// attendance, shown above the per-student view below. Uses the same
+// getAdminDashboard() call as the main Dashboard (cached server-side),
+// so this doesn't add an extra slow round-trip.
+function CentreWideStats() {
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    getAdminDashboard().then((d) => {
+      setData(d)
+      setLoading(false)
+    })
+  }, [])
+
+  if (loading) return <SkeletonCards count={3} />
+
+  return (
+    <div className="bg-white dark:bg-white/5 rounded-xl2 shadow-card p-6 border border-spark-ink/5 dark:border-white/10">
+      <h3 className="font-display font-bold text-spark-ink dark:text-white mb-4">Centre-wide Attendance</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="rounded-xl bg-spark-surface dark:bg-white/5 p-4">
+          <p className="text-xs font-semibold text-spark-ink/40 dark:text-white/40 uppercase tracking-wide mb-2">Today</p>
+          <p className="text-sm text-spark-ink dark:text-white">
+            <span className="font-bold text-emerald-600">{data?.presentToday ?? 0}</span> present ·{' '}
+            <span className="font-bold text-red-500">{data?.absentToday ?? 0}</span> absent ·{' '}
+            <span className="font-bold text-spark-orange">{data?.todayAttendancePct ?? 0}%</span>
+          </p>
+        </div>
+        <div className="rounded-xl bg-spark-surface dark:bg-white/5 p-4">
+          <p className="text-xs font-semibold text-spark-ink/40 dark:text-white/40 uppercase tracking-wide mb-2">This Week</p>
+          <p className="text-sm text-spark-ink dark:text-white">
+            <span className="font-bold text-emerald-600">{data?.weekPresent ?? 0}</span> present ·{' '}
+            <span className="font-bold text-red-500">{data?.weekAbsent ?? 0}</span> absent ·{' '}
+            <span className="font-bold text-spark-orange">{data?.weekAttendancePct ?? 0}%</span>
+          </p>
+        </div>
+        <div className="rounded-xl bg-spark-surface dark:bg-white/5 p-4">
+          <p className="text-xs font-semibold text-spark-ink/40 dark:text-white/40 uppercase tracking-wide mb-2">This Month</p>
+          <p className="text-sm text-spark-ink dark:text-white">
+            <span className="font-bold text-emerald-600">{data?.monthPresent ?? 0}</span> present ·{' '}
+            <span className="font-bold text-red-500">{data?.monthAbsent ?? 0}</span> absent ·{' '}
+            <span className="font-bold text-spark-orange">{data?.monthAttendancePct ?? 0}%</span>
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Attendance() {
+  const { user } = useAuth()
   const { selectedStudentId } = useStudentContext()
   const [records, setRecords] = useState([])
   const [loading, setLoading] = useState(true)
@@ -75,6 +127,8 @@ export default function Attendance() {
 
   return (
     <div className="space-y-6">
+      {user?.role === 'admin' && <CentreWideStats />}
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <StudentSwitcher />
         <button
