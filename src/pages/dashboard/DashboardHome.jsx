@@ -2,29 +2,151 @@ import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import {
   FiUsers, FiCalendar, FiDollarSign, FiAward, FiClock, FiBell,
-  FiCheckCircle, FiXCircle, FiUser, FiPhone
+  FiCheckCircle, FiXCircle, FiUser, FiPhone, FiPlus, FiX
 } from 'react-icons/fi'
 import { useAuth } from '../../contexts/AuthContext.jsx'
 import { useStudentContext } from '../../contexts/StudentContext.jsx'
-import { getDashboardData } from '../../services/api/sheetsApi.js'
+import { getDashboardData, getAdminDashboard, getCalendarEvents, addEvent } from '../../services/api/sheetsApi.js'
 import { summarizeAttendance } from '../../utils/format.js'
 import StatCard from '../../components/StatCard.jsx'
 import StudentSwitcher from '../../components/StudentSwitcher.jsx'
 import AttendanceTrendChart from '../../components/charts/AttendanceTrendChart.jsx'
+import Calendar from '../../components/Calendar.jsx'
 import { SkeletonCards, SkeletonBlock } from '../../components/Skeleton.jsx'
+
+const TODAY = new Date()
+
+function AddEventForm({ students, onAdded, onClose }) {
+  const [type, setType] = useState('Test')
+  const [date, setDate] = useState('')
+  const [title, setTitle] = useState('')
+  const [studentId, setStudentId] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const submit = async (e) => {
+    e.preventDefault()
+    setError('')
+    if (!date) {
+      setError('Date is required.')
+      return
+    }
+    if (type === 'Birthday' && !studentId) {
+      setError('Please choose a student.')
+      return
+    }
+    if (type !== 'Birthday' && !title.trim()) {
+      setError('Title is required.')
+      return
+    }
+    setSaving(true)
+    try {
+      const [y, m, d] = date.split('-')
+      const formattedDate = `${d}.${m}.${y}`
+      if (type === 'Birthday') {
+        await addEvent({ type: 'Birthday', studentId, date: formattedDate })
+      } else {
+        await addEvent({ type, date: formattedDate, title: title.trim() })
+      }
+      setDate('')
+      setTitle('')
+      setStudentId('')
+      onAdded()
+    } catch (err) {
+      setError(err.message || 'Could not add event.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="space-y-3 mt-4 pt-4 border-t border-spark-ink/10 dark:border-white/10">
+      <div className="grid grid-cols-2 gap-3">
+        <select
+          value={type}
+          onChange={(e) => setType(e.target.value)}
+          className="px-3 py-2 rounded-lg border border-spark-ink/10 dark:border-white/10 dark:bg-transparent dark:text-white text-sm focus:border-spark-orange outline-none"
+        >
+          <option value="Test">Test</option>
+          <option value="Important">Important Day</option>
+          <option value="Birthday">Student Birthday</option>
+        </select>
+        <input
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          className="px-3 py-2 rounded-lg border border-spark-ink/10 dark:border-white/10 dark:bg-transparent dark:text-white text-sm focus:border-spark-orange outline-none"
+        />
+      </div>
+      {type === 'Birthday' ? (
+        <select
+          value={studentId}
+          onChange={(e) => setStudentId(e.target.value)}
+          className="w-full px-3 py-2 rounded-lg border border-spark-ink/10 dark:border-white/10 dark:bg-transparent dark:text-white text-sm focus:border-spark-orange outline-none"
+        >
+          <option value="">Choose a student...</option>
+          {students.map((s) => (
+            <option key={s.id} value={s.id}>{s.name} — {s.rollNo}</option>
+          ))}
+        </select>
+      ) : (
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder={type === 'Test' ? 'e.g. Hindi Unit Test' : 'e.g. Annual Day'}
+          className="w-full px-3 py-2 rounded-lg border border-spark-ink/10 dark:border-white/10 dark:bg-transparent dark:text-white text-sm focus:border-spark-orange outline-none"
+        />
+      )}
+      {error && <p className="text-xs text-red-500">{error}</p>}
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          disabled={saving}
+          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-full bg-spark-gradient text-white text-sm font-bold shadow-soft disabled:opacity-60"
+        >
+          <FiPlus size={14} /> {saving ? 'Adding...' : 'Add Event'}
+        </button>
+        <button type="button" onClick={onClose} className="px-4 py-2 rounded-full text-sm font-semibold text-spark-ink/50 dark:text-white/50 hover:text-spark-ink dark:hover:text-white">
+          Cancel
+        </button>
+      </div>
+    </form>
+  )
+}
 
 export default function DashboardHome() {
   const { user } = useAuth()
   const { selectedStudentId, selectedStudent, students } = useStudentContext()
+  const isStudent = user?.role === 'student'
+  const isAdmin = user?.role === 'admin'
+
   const [info, setInfo] = useState(null)
   const [attendance, setAttendance] = useState([])
   const [fees, setFees] = useState([])
   const [marks, setMarks] = useState([])
   const [notifications, setNotifications] = useState([])
   const [announcements, setAnnouncements] = useState([])
+
+  const [adminData, setAdminData] = useState(null)
+  const [calendarEvents, setCalendarEvents] = useState([])
+  const [showAddEvent, setShowAddEvent] = useState(false)
+
   const [loading, setLoading] = useState(true)
 
+  const loadCalendar = () => {
+    getCalendarEvents().then(setCalendarEvents)
+  }
+
   useEffect(() => {
+    if (isAdmin) {
+      setLoading(true)
+      Promise.all([getAdminDashboard(), getCalendarEvents()]).then(([dash, events]) => {
+        setAdminData(dash)
+        setCalendarEvents(events)
+        setLoading(false)
+      })
+      return
+    }
     if (!selectedStudentId) return
     setLoading(true)
     getDashboardData(selectedStudentId).then(({ info, attendance, fees, marks, notifications, announcements }) => {
@@ -36,24 +158,16 @@ export default function DashboardHome() {
       setAnnouncements(announcements)
       setLoading(false)
     })
-  }, [selectedStudentId])
-
-  const isStudent = user?.role === 'student'
-  const isAdmin = user?.role === 'admin'
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin, selectedStudentId])
 
   const summary = summarizeAttendance(attendance)
-  const collectedFees = fees.reduce((s, f) => s + f.paid, 0)
   const pendingFees = fees.reduce((s, f) => s + f.pending, 0)
   const avgMarks = marks.length ? Math.round(marks.reduce((s, m) => s + m.score, 0) / marks.length) : 0
-
-  // Present/Absent counts and a real attendance % based on days that have
-  // actually happened (Holiday and not-yet-happened days are excluded —
-  // only Present vs Absent count toward the percentage).
   const presentCount = attendance.filter((r) => r.status === 'Present').length
   const absentCount = attendance.filter((r) => r.status === 'Absent').length
   const consideredCount = presentCount + absentCount
   const attendancePct = consideredCount ? Math.round((presentCount / consideredCount) * 100) : 0
-
   const trendData = attendance.reduce((acc, r) => {
     const weekLabel = `Wk ${Math.ceil(new Date(r.date).getDate() / 7)}`
     let bucket = acc.find((b) => b.label === weekLabel)
@@ -67,10 +181,18 @@ export default function DashboardHome() {
   }, [])
   const trendPct = trendData.map((b) => ({ label: b.label, present: b.total ? Math.round((b.present / b.total) * 100) : 0 }))
 
+  const adminDailyTrend = (adminData?.dailyTrend || []).map((d) => {
+    const total = d.present + d.absent
+    return {
+      label: d.date.split('.')[0],
+      present: total ? Math.round((d.present / total) * 100) : 0
+    }
+  })
+
   if (loading) {
     return (
       <div className="space-y-6">
-        <SkeletonCards count={isAdmin ? 6 : 4} />
+        <SkeletonCards count={isAdmin ? 5 : 4} />
         <SkeletonBlock className="h-72" />
       </div>
     )
@@ -90,17 +212,16 @@ export default function DashboardHome() {
             {isAdmin ? 'Centre Overview' : 'Your Overview'}
           </p>
           <h2 className="font-display font-bold text-2xl sm:text-3xl mb-1">
-            {isAdmin ? `${students.length} students, one live view` : selectedStudent?.name || '\u2014'}
+            {isAdmin ? `${adminData?.totalStudents ?? 0} students, one live view` : selectedStudent?.name || '\u2014'}
           </h2>
           <p className="text-white/80 text-sm">
             {isAdmin
-              ? "Here's how the centre is tracking this month."
+              ? adminData?.today || ''
               : `Class ${selectedStudent?.class} \u00b7 Roll No. ${selectedStudent?.rollNo} \u00b7 August 2026`}
           </p>
         </div>
       </motion.div>
 
-      {/* Student profile card — name, roll no, class, days & slot, parent contact */}
       {isStudent && info && (
         <div className="bg-white dark:bg-white/5 rounded-xl2 shadow-card p-6 border border-spark-ink/5 dark:border-white/10">
           <h3 className="font-display font-bold text-spark-ink dark:text-white mb-4">Profile</h3>
@@ -141,12 +262,12 @@ export default function DashboardHome() {
 
       {isAdmin ? (
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-          <StatCard icon={FiUsers} label="Total Students" value={students.length} tone="orange" />
-          <StatCard icon={FiCalendar} label="Attendance %" value={summary.pct} suffix="%" tone="green" />
-          <StatCard icon={FiDollarSign} label="Fees Collected" value={collectedFees} tone="blue" />
-          <StatCard icon={FiClock} label="Pending Fees" value={pendingFees} tone="red" />
-          <StatCard icon={FiAward} label="Average Marks" value={avgMarks} suffix="%" tone="orange" />
-          <StatCard icon={FiBell} label="Today's Attendance" value={summary.pct} suffix="%" tone="green" />
+          <StatCard icon={FiUsers} label="Total Students" value={adminData?.totalStudents ?? 0} tone="orange" />
+          <StatCard icon={FiCheckCircle} label="Present Today" value={adminData?.presentToday ?? 0} tone="green" />
+          <StatCard icon={FiXCircle} label="Absent Today" value={adminData?.absentToday ?? 0} tone="red" />
+          <StatCard icon={FiCalendar} label="Attendance % Today" value={adminData?.todayAttendancePct ?? 0} suffix="%" tone="orange" />
+          <StatCard icon={FiDollarSign} label="Fees Collected (Month)" value={adminData?.feesCollected ?? 0} tone="blue" />
+          <StatCard icon={FiClock} label="Fees Pending (Month)" value={adminData?.feesPending ?? 0} tone="red" />
         </div>
       ) : isStudent ? (
         <div className="grid grid-cols-3 gap-4">
@@ -163,7 +284,7 @@ export default function DashboardHome() {
         </div>
       )}
 
-      {students.length > 1 && (
+      {!isAdmin && students.length > 1 && (
         <div className="flex justify-end">
           <StudentSwitcher />
         </div>
@@ -171,40 +292,86 @@ export default function DashboardHome() {
 
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 bg-white dark:bg-white/5 rounded-xl2 shadow-card p-6 border border-spark-ink/5 dark:border-white/10">
-          <h3 className="font-display font-bold text-spark-ink dark:text-white mb-4">Monthly Attendance Trend</h3>
-          <AttendanceTrendChart data={trendPct} />
+          <h3 className="font-display font-bold text-spark-ink dark:text-white mb-4">
+            {isAdmin ? 'Daily Attendance Trend (this month)' : 'Monthly Attendance Trend'}
+          </h3>
+          <AttendanceTrendChart data={isAdmin ? adminDailyTrend : trendPct} />
+          {isAdmin && (
+            <p className="text-xs text-spark-ink/40 dark:text-white/40 mt-3">
+              Shows each day's centre-wide attendance % so far this month. A month-over-month
+              trend will appear here automatically once more months are added to the system.
+            </p>
+          )}
         </div>
 
         <div className="bg-white dark:bg-white/5 rounded-xl2 shadow-card p-6 border border-spark-ink/5 dark:border-white/10">
           <h3 className="font-display font-bold text-spark-ink dark:text-white mb-4">Announcements</h3>
           <div className="space-y-4">
-            {announcements.map((a) => (
-              <div key={a.id} className="pb-4 border-b border-spark-ink/5 dark:border-white/10 last:border-0 last:pb-0">
-                <p className="text-xs text-spark-orange font-bold mb-1">
-                  {new Date(a.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
-                </p>
-                <p className="text-sm font-semibold text-spark-ink dark:text-white">{a.title}</p>
-                <p className="text-xs text-spark-ink/50 dark:text-white/50 mt-0.5">{a.body}</p>
-              </div>
-            ))}
+            {announcements.length === 0 ? (
+              <p className="text-sm text-spark-ink/40 dark:text-white/40">No announcements yet.</p>
+            ) : (
+              announcements.map((a) => (
+                <div key={a.id} className="pb-4 border-b border-spark-ink/5 dark:border-white/10 last:border-0 last:pb-0">
+                  <p className="text-xs text-spark-orange font-bold mb-1">
+                    {new Date(a.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                  </p>
+                  <p className="text-sm font-semibold text-spark-ink dark:text-white">{a.title}</p>
+                  <p className="text-xs text-spark-ink/50 dark:text-white/50 mt-0.5">{a.body}</p>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>
 
-      <div className="bg-white dark:bg-white/5 rounded-xl2 shadow-card p-6 border border-spark-ink/5 dark:border-white/10">
-        <h3 className="font-display font-bold text-spark-ink dark:text-white mb-4">Recent Activity</h3>
-        <div className="space-y-3">
-          {notifications.slice(0, 4).map((n) => (
-            <div key={n.id} className="flex items-start gap-3">
-              <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${n.read ? 'bg-spark-ink/20 dark:bg-white/20' : 'bg-spark-orange'}`} />
-              <div>
-                <p className="text-sm font-semibold text-spark-ink dark:text-white">{n.title}</p>
-                <p className="text-xs text-spark-ink/50 dark:text-white/50">{n.message}</p>
-              </div>
-            </div>
-          ))}
+      {isAdmin && (
+        <div className="bg-white dark:bg-white/5 rounded-xl2 shadow-card p-6 border border-spark-ink/5 dark:border-white/10 max-w-md">
+          <div className="flex items-center justify-between mb-1">
+            <h3 className="font-display font-bold text-spark-ink dark:text-white">Calendar</h3>
+            {!showAddEvent && (
+              <button
+                onClick={() => setShowAddEvent(true)}
+                className="flex items-center gap-1 text-xs font-bold text-spark-orange hover:underline"
+              >
+                <FiPlus size={13} /> Add Event
+              </button>
+            )}
+            {showAddEvent && (
+              <button onClick={() => setShowAddEvent(false)} className="text-spark-ink/40 dark:text-white/40">
+                <FiX size={16} />
+              </button>
+            )}
+          </div>
+          <Calendar year={TODAY.getFullYear()} month={TODAY.getMonth() + 1} events={calendarEvents} />
+          {showAddEvent && (
+            <AddEventForm
+              students={students}
+              onClose={() => setShowAddEvent(false)}
+              onAdded={() => {
+                setShowAddEvent(false)
+                loadCalendar()
+              }}
+            />
+          )}
         </div>
-      </div>
+      )}
+
+      {!isAdmin && (
+        <div className="bg-white dark:bg-white/5 rounded-xl2 shadow-card p-6 border border-spark-ink/5 dark:border-white/10">
+          <h3 className="font-display font-bold text-spark-ink dark:text-white mb-4">Recent Activity</h3>
+          <div className="space-y-3">
+            {notifications.slice(0, 4).map((n) => (
+              <div key={n.id} className="flex items-start gap-3">
+                <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${n.read ? 'bg-spark-ink/20 dark:bg-white/20' : 'bg-spark-orange'}`} />
+                <div>
+                  <p className="text-sm font-semibold text-spark-ink dark:text-white">{n.title}</p>
+                  <p className="text-xs text-spark-ink/50 dark:text-white/50">{n.message}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
