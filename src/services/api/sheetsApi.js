@@ -191,4 +191,15 @@ export async function addMarks({ studentId, subject, score, testName, maxScore, 
   }
   return postScript_('addMarks', { studentId, subject, score, testName, maxScore, date })
 }
+// Admin-only in the UI. Writes directly into the student's real sheet
+// row for that date — { studentId, date: 'dd.MM.yyyy', topic, timeIn,
+// timeOut, month? }. The row must already exist (every day 1-31 already
+// has a blank row); this doesn't create new rows or new month sheets.
+export async function addAttendanceEntry({ studentId, date, topic, timeIn, timeOut, month }) {
+  if (USE_MOCK) {
+    await delay()
+    return { saved: true, studentId, date, topic, timeIn, timeOut }
+  }
+  return postScript_('addAttendanceEntry', { studentId, date, topic, timeIn, timeOut, month })
+}
 export const isMockMode = USE_MOCK
