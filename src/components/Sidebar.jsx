@@ -18,6 +18,7 @@ const BASE_LINKS = [
 
 const ADMIN_LINKS = [
   { to: '/app/admin/students', label: 'Manage Students', icon: FiUsers },
+  { to: '/app/admin/attendance', label: 'Manage Attendance', icon: FiCalendar },
   { to: '/app/admin/marks', label: 'Manage Marks', icon: FiAward },
   { to: '/app/admin/analytics', label: 'Analytics', icon: FiBarChart2 }
 ]
