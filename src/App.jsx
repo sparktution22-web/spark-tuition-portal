@@ -18,6 +18,7 @@ import Settings from './pages/dashboard/Settings.jsx'
 import AdminStudents from './pages/admin/AdminStudents.jsx'
 import AdminAnalytics from './pages/admin/AdminAnalytics.jsx'
 import AdminMarks from './pages/admin/AdminMarks.jsx'
+import AdminAttendance from './pages/admin/AdminAttendance.jsx'
 function App() {
   return (
     <ThemeProvider>
@@ -65,6 +66,14 @@ function App() {
               element={
                 <ProtectedRoute roles={['admin']}>
                   <AdminMarks />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="admin/attendance"
+              element={
+                <ProtectedRoute roles={['admin']}>
+                  <AdminAttendance />
                 </ProtectedRoute>
               }
             />
