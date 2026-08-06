@@ -261,12 +261,13 @@ export default function DashboardHome() {
       )}
 
       {isAdmin ? (
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard icon={FiUsers} label="Total Students" value={adminData?.totalStudents ?? 0} tone="orange" />
           <StatCard icon={FiCheckCircle} label="Present Today" value={adminData?.presentToday ?? 0} tone="green" />
           <StatCard icon={FiXCircle} label="Absent Today" value={adminData?.absentToday ?? 0} tone="red" />
           <StatCard icon={FiCalendar} label="Attendance % Today" value={adminData?.todayAttendancePct ?? 0} suffix="%" tone="orange" />
-          <StatCard icon={FiDollarSign} label="Fees Collected (Month)" value={adminData?.feesCollected ?? 0} tone="blue" />
+          <StatCard icon={FiDollarSign} label="Fees to be Collected (Month)" value={adminData?.feesPayable ?? 0} tone="blue" />
+          <StatCard icon={FiDollarSign} label="Fees Collected (Month)" value={adminData?.feesCollected ?? 0} tone="green" />
           <StatCard icon={FiClock} label="Fees Pending (Month)" value={adminData?.feesPending ?? 0} tone="red" />
         </div>
       ) : isStudent ? (
