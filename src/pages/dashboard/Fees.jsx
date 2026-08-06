@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { FiDollarSign, FiCheckCircle, FiClock, FiTrendingUp } from 'react-icons/fi'
+import { useAuth } from '../../contexts/AuthContext.jsx'
 import { useStudentContext } from '../../contexts/StudentContext.jsx'
-import { getFees } from '../../services/api/sheetsApi.js'
+import { getFees, getAdminDashboard } from '../../services/api/sheetsApi.js'
 import { formatCurrency } from '../../utils/format.js'
 import StatCard from '../../components/StatCard.jsx'
 import StudentSwitcher from '../../components/StudentSwitcher.jsx'
@@ -9,7 +10,71 @@ import FeeCollectionChart from '../../components/charts/FeeCollectionChart.jsx'
 import FeePieChart from '../../components/charts/FeePieChart.jsx'
 import { SkeletonCards, SkeletonTable } from '../../components/Skeleton.jsx'
 
+// Admin-only — consolidated centre-wide fees for this month + last month,
+// shown above the per-student view below. Uses the same getAdminDashboard()
+// call as the main Dashboard (cached server-side), so this doesn't add an
+// extra slow round-trip.
+function CentreWideFeesStats() {
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    getAdminDashboard().then((d) => {
+      setData(d)
+      setLoading(false)
+    })
+  }, [])
+
+  if (loading) return <SkeletonCards count={3} />
+
+  const thisMonthPct = data?.feesPayable ? Math.round((data.feesCollected / data.feesPayable) * 100) : 0
+  const prevMonthPct = data?.feesPayablePrevMonth ? Math.round((data.feesCollectedPrevMonth / data.feesPayablePrevMonth) * 100) : 0
+
+  return (
+    <div className="bg-white dark:bg-white/5 rounded-xl2 shadow-card p-6 border border-spark-ink/5 dark:border-white/10">
+      <h3 className="font-display font-bold text-spark-ink dark:text-white mb-4">Centre-wide Fees</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="rounded-xl bg-spark-surface dark:bg-white/5 p-4">
+          <p className="text-xs font-semibold text-spark-ink/40 dark:text-white/40 uppercase tracking-wide mb-2">This Month</p>
+          <div className="grid grid-cols-3 gap-3 text-center">
+            <div>
+              <p className="font-mono font-bold text-spark-ink dark:text-white text-sm">{formatCurrency(data?.feesPayable ?? 0)}</p>
+              <p className="text-[10px] text-spark-ink/40 dark:text-white/40 mt-0.5">Total</p>
+            </div>
+            <div>
+              <p className="font-mono font-bold text-emerald-600 text-sm">{formatCurrency(data?.feesCollected ?? 0)}</p>
+              <p className="text-[10px] text-spark-ink/40 dark:text-white/40 mt-0.5">Collected ({thisMonthPct}%)</p>
+            </div>
+            <div>
+              <p className="font-mono font-bold text-red-500 text-sm">{formatCurrency(data?.feesPending ?? 0)}</p>
+              <p className="text-[10px] text-spark-ink/40 dark:text-white/40 mt-0.5">Pending</p>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-xl bg-spark-surface dark:bg-white/5 p-4">
+          <p className="text-xs font-semibold text-spark-ink/40 dark:text-white/40 uppercase tracking-wide mb-2">Last Month</p>
+          <div className="grid grid-cols-3 gap-3 text-center">
+            <div>
+              <p className="font-mono font-bold text-spark-ink dark:text-white text-sm">{formatCurrency(data?.feesPayablePrevMonth ?? 0)}</p>
+              <p className="text-[10px] text-spark-ink/40 dark:text-white/40 mt-0.5">Total</p>
+            </div>
+            <div>
+              <p className="font-mono font-bold text-emerald-600 text-sm">{formatCurrency(data?.feesCollectedPrevMonth ?? 0)}</p>
+              <p className="text-[10px] text-spark-ink/40 dark:text-white/40 mt-0.5">Collected ({prevMonthPct}%)</p>
+            </div>
+            <div>
+              <p className="font-mono font-bold text-red-500 text-sm">{formatCurrency(data?.feesPendingPrevMonth ?? 0)}</p>
+              <p className="text-[10px] text-spark-ink/40 dark:text-white/40 mt-0.5">Pending</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Fees() {
+  const { user } = useAuth()
   const { selectedStudentId } = useStudentContext()
   const [fees, setFees] = useState([])
   const [loading, setLoading] = useState(true)
@@ -38,6 +103,8 @@ export default function Fees() {
 
   return (
     <div className="space-y-6">
+      {user?.role === 'admin' && <CentreWideFeesStats />}
+
       <div className="flex justify-end">
         <StudentSwitcher />
       </div>
