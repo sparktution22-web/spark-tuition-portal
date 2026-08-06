@@ -12,6 +12,7 @@ import { SkeletonBlock } from '../../components/Skeleton.jsx'
 // not added there yet will show a friendly "not available" message
 // instead of crashing or silently showing another month's data).
 const MONTHS = [
+  { label: 'April 2026', key: '2026-04' },
   { label: 'May 2026', key: '2026-05' },
   { label: 'June 2026', key: '2026-06' },
   { label: 'July 2026', key: '2026-07' },
