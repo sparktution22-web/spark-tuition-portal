@@ -21,10 +21,19 @@ const ADMIN_LINKS = [
   { to: '/app/admin/analytics', label: 'Analytics', icon: FiBarChart2 }
 ]
 
+// Links hidden entirely for a given role, keyed by role. Currently just
+// Fees hidden from students — add more entries here the same way if other
+// tabs should be role-restricted later.
+const HIDDEN_FOR_ROLE = {
+  student: ['/app/fees']
+}
+
 export default function Sidebar({ open, onClose }) {
   const { user, logout } = useAuth()
 
-  const links = user?.role === 'admin' ? [...BASE_LINKS, ...ADMIN_LINKS] : BASE_LINKS
+  const allLinks = user?.role === 'admin' ? [...BASE_LINKS, ...ADMIN_LINKS] : BASE_LINKS
+  const hidden = HIDDEN_FOR_ROLE[user?.role] || []
+  const links = allLinks.filter((link) => !hidden.includes(link.to))
 
   return (
     <>
