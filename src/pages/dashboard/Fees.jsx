@@ -1,14 +1,99 @@
 import { useEffect, useState } from 'react'
-import { FiDollarSign, FiCheckCircle, FiClock, FiTrendingUp } from 'react-icons/fi'
+import { FiDollarSign, FiCheckCircle, FiClock, FiTrendingUp, FiSend, FiMessageCircle } from 'react-icons/fi'
 import { useAuth } from '../../contexts/AuthContext.jsx'
 import { useStudentContext } from '../../contexts/StudentContext.jsx'
-import { getFees, getAdminDashboard } from '../../services/api/sheetsApi.js'
+import { getFees, getAdminDashboard, getFeeReminders } from '../../services/api/sheetsApi.js'
 import { formatCurrency } from '../../utils/format.js'
 import StatCard from '../../components/StatCard.jsx'
 import StudentSwitcher from '../../components/StudentSwitcher.jsx'
 import FeeCollectionChart from '../../components/charts/FeeCollectionChart.jsx'
 import FeePieChart from '../../components/charts/FeePieChart.jsx'
 import { SkeletonCards, SkeletonTable } from '../../components/Skeleton.jsx'
+
+// Turns a stored parent number (e.g. "8903480344" or with spaces/dashes)
+// into the digits-only, country-code-prefixed format wa.me needs.
+// Assumes India (+91) since that's this centre's numbers — adjust the
+// prefix here if that's ever not the case.
+function toWhatsAppNumber(raw) {
+  const digits = String(raw || '').replace(/\D/g, '')
+  if (!digits) return null
+  if (digits.length === 10) return '91' + digits
+  if (digits.length === 11 && digits.startsWith('0')) return '91' + digits.slice(1)
+  if (digits.length === 12 && digits.startsWith('91')) return digits
+  return digits
+}
+
+function buildReminderLink(r) {
+  const number = toWhatsAppNumber(r.parentMobile)
+  if (!number) return null
+  const greeting = r.parentName ? `Dear ${r.parentName}` : 'Dear Parent'
+  const message =
+    `${greeting}, this is a reminder from SPARK Tuition Centre that a fee of ${formatCurrency(r.pending)} ` +
+    `is pending for ${r.name} (Class ${r.class}) for ${r.month}. Kindly clear it at your earliest convenience. Thank you!`
+  return `https://wa.me/${number}?text=${encodeURIComponent(message)}`
+}
+
+// Admin-only — every student with a pending balance this month, each
+// with a "Send Reminder" button that opens WhatsApp pre-filled with a
+// message to that parent. Free (no WhatsApp Business API needed) —
+// admin still clicks Send themselves in WhatsApp, this just prepares
+// the message and opens the right chat.
+function FeeRemindersPanel() {
+  const [reminders, setReminders] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    getFeeReminders().then((data) => {
+      setReminders(data)
+      setLoading(false)
+    })
+  }, [])
+
+  if (loading) return <SkeletonTable rows={3} />
+
+  return (
+    <div className="bg-white dark:bg-white/5 rounded-xl2 shadow-card border border-spark-ink/5 dark:border-white/10 overflow-hidden">
+      <div className="p-6 pb-4 flex items-center justify-between">
+        <h3 className="font-display font-bold text-spark-ink dark:text-white flex items-center gap-2">
+          <FiMessageCircle className="text-emerald-500" /> Fee Reminders
+        </h3>
+        <span className="text-xs font-semibold text-spark-ink/40 dark:text-white/40">{reminders.length} pending</span>
+      </div>
+
+      {reminders.length === 0 ? (
+        <p className="px-6 pb-6 text-sm text-spark-ink/50 dark:text-white/50">No pending fees this month — nothing to remind.</p>
+      ) : (
+        <div className="divide-y divide-spark-ink/5 dark:divide-white/5">
+          {reminders.map((r) => {
+            const link = buildReminderLink(r)
+            return (
+              <div key={r.rollNo} className="flex items-center justify-between px-6 py-3.5">
+                <div>
+                  <p className="text-sm font-semibold text-spark-ink dark:text-white">{r.name} <span className="text-xs font-normal text-spark-ink/40 dark:text-white/40">Class {r.class} · {r.rollNo}</span></p>
+                  <p className="text-xs text-spark-ink/50 dark:text-white/50">
+                    {r.parentName || 'Parent'} · {r.parentMobile || 'No number on file'} · <span className="text-red-500 font-semibold">{formatCurrency(r.pending)} pending</span>
+                  </p>
+                </div>
+                {link ? (
+                  <a
+                    href={link}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-emerald-500 text-white text-xs font-bold shadow-soft hover:shadow-card-hover transition-all shrink-0"
+                  >
+                    <FiSend size={13} /> Send Reminder
+                  </a>
+                ) : (
+                  <span className="text-xs text-spark-ink/30 dark:text-white/30 shrink-0">No number on file</span>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
 
 // Admin-only — consolidated centre-wide fees for the current month,
 // shown above the per-student view below. Uses the same
@@ -105,6 +190,8 @@ export default function Fees() {
           <FeePieChart collected={collected} pending={pending} />
         </div>
       </div>
+
+      {user?.role === 'admin' && <FeeRemindersPanel />}
 
       <div className="bg-white dark:bg-white/5 rounded-xl2 shadow-card border border-spark-ink/5 dark:border-white/10 overflow-hidden">
         <h3 className="font-display font-bold text-spark-ink dark:text-white p-6 pb-4">Payment History</h3>
