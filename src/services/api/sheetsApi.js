@@ -212,15 +212,6 @@ export async function getFeeReminders() {
   }
   return callScript('getFeeReminders')
 }
-// Visible to every role. Real mode reads from the ANNOUNCEMENTS sheet
-// (auto-created); mock mode has no real source yet so returns empty.
-export async function getAnnouncements() {
-  if (USE_MOCK) {
-    await delay()
-    return []
-  }
-  return callScript('getAnnouncements')
-}
 // Admin-only in the UI.
 export async function addAnnouncement({ title, body, date }) {
   if (USE_MOCK) {
