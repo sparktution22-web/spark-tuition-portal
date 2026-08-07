@@ -1,11 +1,67 @@
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { FiPlus, FiTrash2, FiClock } from 'react-icons/fi'
-import { getStudents, getTimetable, addTimetableEntry, deleteTimetableEntry } from '../../services/api/sheetsApi.js'
+import { FiPlus, FiTrash2, FiClock, FiEdit2, FiCheck, FiX } from 'react-icons/fi'
+import { getStudents, getTimetable, addTimetableEntry, updateTimetableEntry, deleteTimetableEntry } from '../../services/api/sheetsApi.js'
 import { SkeletonTable } from '../../components/Skeleton.jsx'
 import EmptyState from '../../components/EmptyState.jsx'
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+function EditSlotRow({ entry, onSaved, onCancel }) {
+  const [day, setDay] = useState(entry.day)
+  const [time, setTime] = useState(entry.time)
+  const [subject, setSubject] = useState(entry.subject)
+  const [saving, setSaving] = useState(false)
+
+  const save = async () => {
+    if (!time.trim() || !subject.trim()) return
+    setSaving(true)
+    try {
+      await updateTimetableEntry({ id: entry.id, day, time: time.trim(), subject: subject.trim() })
+      onSaved()
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="bg-spark-peach/40 dark:bg-white/10 rounded-lg px-3 py-2.5 space-y-2">
+      <div className="grid grid-cols-2 gap-2">
+        <select
+          value={day}
+          onChange={(e) => setDay(e.target.value)}
+          className="px-2.5 py-1.5 rounded-lg border border-spark-ink/10 dark:border-white/10 dark:bg-transparent dark:text-white text-xs focus:border-spark-orange outline-none"
+        >
+          {DAYS.map((d) => <option key={d} value={d}>{d}</option>)}
+        </select>
+        <input
+          value={time}
+          onChange={(e) => setTime(e.target.value)}
+          placeholder="Time"
+          className="px-2.5 py-1.5 rounded-lg border border-spark-ink/10 dark:border-white/10 dark:bg-transparent dark:text-white text-xs focus:border-spark-orange outline-none"
+        />
+      </div>
+      <input
+        value={subject}
+        onChange={(e) => setSubject(e.target.value)}
+        placeholder="Subject"
+        className="w-full px-2.5 py-1.5 rounded-lg border border-spark-ink/10 dark:border-white/10 dark:bg-transparent dark:text-white text-xs focus:border-spark-orange outline-none"
+      />
+      <div className="flex gap-2">
+        <button
+          onClick={save}
+          disabled={saving}
+          className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-spark-gradient text-white text-xs font-bold disabled:opacity-60"
+        >
+          <FiCheck size={13} /> {saving ? 'Saving...' : 'Save'}
+        </button>
+        <button onClick={onCancel} className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold text-spark-ink/50 dark:text-white/50 hover:text-spark-ink dark:hover:text-white">
+          <FiX size={13} /> Cancel
+        </button>
+      </div>
+    </div>
+  )
+}
 
 export default function AdminTimetable() {
   const [students, setStudents] = useState([])
@@ -15,6 +71,7 @@ export default function AdminTimetable() {
   const [loadingEntries, setLoadingEntries] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [editingId, setEditingId] = useState(null)
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm({ defaultValues: { day: 'Monday' } })
 
@@ -39,6 +96,7 @@ export default function AdminTimetable() {
 
   useEffect(() => {
     loadEntries()
+    setEditingId(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId])
 
@@ -146,17 +204,31 @@ export default function AdminTimetable() {
                   <div key={day}>
                     <p className="text-xs font-bold text-spark-orange uppercase tracking-wide mb-2">{day}</p>
                     <div className="space-y-2">
-                      {byDay[day].map((e) => (
-                        <div key={e.id} className="flex items-center justify-between bg-spark-surface dark:bg-white/5 rounded-lg px-3 py-2">
-                          <div>
-                            <p className="text-sm font-semibold text-spark-ink dark:text-white">{e.subject}</p>
-                            <p className="text-xs text-spark-ink/50 dark:text-white/50">{e.time}</p>
+                      {byDay[day].map((e) =>
+                        editingId === e.id ? (
+                          <EditSlotRow
+                            key={e.id}
+                            entry={e}
+                            onCancel={() => setEditingId(null)}
+                            onSaved={() => { setEditingId(null); loadEntries() }}
+                          />
+                        ) : (
+                          <div key={e.id} className="flex items-center justify-between bg-spark-surface dark:bg-white/5 rounded-lg px-3 py-2">
+                            <div>
+                              <p className="text-sm font-semibold text-spark-ink dark:text-white">{e.subject}</p>
+                              <p className="text-xs text-spark-ink/50 dark:text-white/50">{e.time}</p>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <button onClick={() => setEditingId(e.id)} className="text-spark-ink/30 hover:text-spark-orange transition-colors p-1">
+                                <FiEdit2 size={14} />
+                              </button>
+                              <button onClick={() => handleDelete(e.id)} className="text-spark-ink/30 hover:text-red-500 transition-colors p-1">
+                                <FiTrash2 size={15} />
+                              </button>
+                            </div>
                           </div>
-                          <button onClick={() => handleDelete(e.id)} className="text-spark-ink/30 hover:text-red-500 transition-colors p-1">
-                            <FiTrash2 size={15} />
-                          </button>
-                        </div>
-                      ))}
+                        )
+                      )}
                     </div>
                   </div>
                 ))}
