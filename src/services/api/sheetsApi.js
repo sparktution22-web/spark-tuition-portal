@@ -245,3 +245,11 @@ export async function deleteTimetableEntry(id) {
   }
   return postScript_('deleteTimetableEntry', { id })
 }
+// Admin-only in the UI. Edits an existing slot in place.
+export async function updateTimetableEntry({ id, day, time, subject }) {
+  if (USE_MOCK) {
+    await delay()
+    return { updated: true, id, day, time, subject }
+  }
+  return postScript_('updateTimetableEntry', { id, day, time, subject })
+}
