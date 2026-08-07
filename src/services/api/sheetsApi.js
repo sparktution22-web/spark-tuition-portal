@@ -202,4 +202,14 @@ export async function addAttendanceEntry({ studentId, date, topic, timeIn, timeO
   }
   return postScript_('addAttendanceEntry', { studentId, date, topic, timeIn, timeOut, month })
 }
+// Admin-only in the UI. Every student with a pending fee balance this
+// month, plus their parent's name/mobile — used to build WhatsApp
+// click-to-chat reminder links.
+export async function getFeeReminders() {
+  if (USE_MOCK) {
+    await delay()
+    return []
+  }
+  return callScript('getFeeReminders')
+}
 export const isMockMode = USE_MOCK
