@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import {
   FiGrid, FiCalendar, FiFileText, FiDollarSign, FiAward, FiDownload,
-  FiBell, FiSettings, FiLogOut, FiUsers, FiBarChart2, FiX
+  FiBell, FiSettings, FiLogOut, FiUsers, FiBarChart2, FiX, FiClock
 } from 'react-icons/fi'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import sparkLogo from '../assets/spark-logo.png'
@@ -12,6 +12,7 @@ const BASE_LINKS = [
   { to: '/app/student-report', label: 'Student Report', icon: FiFileText },
   { to: '/app/fees', label: 'Fees', icon: FiDollarSign },
   { to: '/app/marks', label: 'Test Marks', icon: FiAward },
+  { to: '/app/timetable', label: 'Timetable', icon: FiClock },
   { to: '/app/reports', label: 'Monthly Reports', icon: FiDownload },
   { to: '/app/notifications', label: 'Notifications', icon: FiBell }
 ]
@@ -20,6 +21,7 @@ const ADMIN_LINKS = [
   { to: '/app/admin/students', label: 'Manage Students', icon: FiUsers },
   { to: '/app/admin/attendance', label: 'Manage Attendance', icon: FiCalendar },
   { to: '/app/admin/marks', label: 'Manage Marks', icon: FiAward },
+  { to: '/app/admin/timetable', label: 'Manage Timetable', icon: FiClock },
   { to: '/app/admin/analytics', label: 'Analytics', icon: FiBarChart2 }
 ]
 
