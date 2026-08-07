@@ -26,10 +26,10 @@ function toWhatsAppNumber(raw) {
 function buildReminderLink(r) {
   const number = toWhatsAppNumber(r.parentMobile)
   if (!number) return null
-  const greeting = r.parentName ? `Dear ${r.parentName}` : 'Dear Parent'
+  const greeting = r.parentName ? `Dear ${r.parentName} (Parent of ${r.name})` : `Dear Parent of ${r.name}`
   const message =
-    `${greeting}, this is a reminder from SPARK Tuition Centre that a fee of ${formatCurrency(r.pending)} ` +
-    `is pending for ${r.name} (Class ${r.class}) for ${r.month}. Kindly clear it at your earliest convenience. Thank you!`
+    `${greeting}, this is a gentle reminder from SPARK Tuition Centre that ${r.name}'s (Class ${r.class}) fee of ` +
+    `${formatCurrency(r.pending)} for ${r.month} is still pending. Kindly clear it at your earliest convenience. Thank you!`
   return `https://wa.me/${number}?text=${encodeURIComponent(message)}`
 }
 
