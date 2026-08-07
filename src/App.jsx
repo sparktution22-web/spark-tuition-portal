@@ -19,6 +19,8 @@ import AdminStudents from './pages/admin/AdminStudents.jsx'
 import AdminAnalytics from './pages/admin/AdminAnalytics.jsx'
 import AdminMarks from './pages/admin/AdminMarks.jsx'
 import AdminAttendance from './pages/admin/AdminAttendance.jsx'
+import AdminTimetable from './pages/admin/AdminTimetable.jsx'
+import Timetable from './pages/dashboard/Timetable.jsx'
 function App() {
   return (
     <ThemeProvider>
@@ -43,6 +45,7 @@ function App() {
             <Route path="fees" element={<Fees />} />
             <Route path="marks" element={<TestMarks />} />
             <Route path="reports" element={<MonthlyReports />} />
+            <Route path="timetable" element={<Timetable />} />
             <Route path="notifications" element={<Notifications />} />
             <Route path="settings" element={<Settings />} />
             <Route
@@ -74,6 +77,14 @@ function App() {
               element={
                 <ProtectedRoute roles={['admin']}>
                   <AdminAttendance />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="admin/timetable"
+              element={
+                <ProtectedRoute roles={['admin']}>
+                  <AdminTimetable />
                 </ProtectedRoute>
               }
             />
