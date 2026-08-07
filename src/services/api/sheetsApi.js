@@ -94,6 +94,25 @@ export async function getAdminDashboard() {
   }
   return callScript('getAdminDashboard')
 }
+// Powers the Analytics page — real mode computes this server-side in one
+// pass (see getAdminAnalytics_ in Code.gs), replacing what used to be a
+// per-student loop of getFees/getMarks/getAttendance calls.
+export async function getAdminAnalytics() {
+  if (USE_MOCK) {
+    await delay()
+    return {
+      totalStudents: STUDENTS.length,
+      avgAttendance: 82,
+      totalFees: STUDENTS.length * 3500,
+      collected: Math.round(STUDENTS.length * 3500 * 0.6),
+      pending: Math.round(STUDENTS.length * 3500 * 0.4),
+      avgMarks: 78,
+      feeTrend: [],
+      attTrend: []
+    }
+  }
+  return callScript('getAdminAnalytics')
+}
 // Unified calendar: government holidays + admin-added holidays/birthdays/
 // important days + test dates (pulled automatically from Marks). month is
 // 'YYYY-MM' — omit for the current month.
