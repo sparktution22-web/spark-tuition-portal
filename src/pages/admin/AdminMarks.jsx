@@ -41,16 +41,22 @@ export default function AdminMarks() {
     setError('')
     setSaving(true)
     try {
+      let formattedDate
+      if (data.examDate) {
+        const [y, m, d] = data.examDate.split('-')
+        formattedDate = `${d}.${m}.${y}`
+      }
       await addMarks({
         studentId: selectedId,
         subject: data.subject,
         testName: data.testName,
         score: Number(data.score),
-        maxScore: Number(data.maxScore) || 100
+        maxScore: Number(data.maxScore) || 100,
+        date: formattedDate
       })
       const updated = await getMarks(selectedId)
       setMarks(updated)
-      reset({ subject: '', testName: '', score: '', maxScore: '' })
+      reset({ subject: '', testName: '', score: '', maxScore: '', examDate: '' })
     } catch (err) {
       setError(err.message || 'Could not add marks. Please try again.')
     } finally {
@@ -101,6 +107,15 @@ export default function AdminMarks() {
                   placeholder="e.g. Unit Test 1"
                   className="w-full px-4 py-2.5 rounded-xl border border-spark-ink/10 dark:border-white/10 dark:bg-transparent dark:text-white text-sm focus:border-spark-orange outline-none"
                 />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-spark-ink/50 dark:text-white/50 mb-1.5 block">Exam Date</label>
+                <input
+                  type="date"
+                  {...register('examDate')}
+                  className="w-full px-4 py-2.5 rounded-xl border border-spark-ink/10 dark:border-white/10 dark:bg-transparent dark:text-white text-sm focus:border-spark-orange outline-none"
+                />
+                <p className="text-xs text-spark-ink/40 dark:text-white/40 mt-1">Leave blank to use today's date</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
