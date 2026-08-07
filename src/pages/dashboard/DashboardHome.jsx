@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import {
   FiUsers, FiCalendar, FiDollarSign, FiAward, FiClock, FiBell,
-  FiCheckCircle, FiXCircle, FiUser, FiPhone, FiPlus, FiX
+  FiCheckCircle, FiXCircle, FiUser, FiPhone, FiPlus, FiX, FiChevronLeft, FiChevronRight
 } from 'react-icons/fi'
 import { useAuth } from '../../contexts/AuthContext.jsx'
 import { useStudentContext } from '../../contexts/StudentContext.jsx'
-import { getDashboardData, getAdminDashboard, getCalendarEvents, addEvent } from '../../services/api/sheetsApi.js'
+import { getDashboardData, getAdminDashboard, getCalendarEvents, addEvent, getAnnouncements, addAnnouncement } from '../../services/api/sheetsApi.js'
 import { summarizeAttendance } from '../../utils/format.js'
 import StatCard from '../../components/StatCard.jsx'
 import StudentSwitcher from '../../components/StudentSwitcher.jsx'
@@ -15,6 +15,7 @@ import Calendar from '../../components/Calendar.jsx'
 import { SkeletonCards, SkeletonBlock } from '../../components/Skeleton.jsx'
 
 const TODAY = new Date()
+const pad = (n) => String(n).padStart(2, '0')
 
 function AddEventForm({ students, onAdded, onClose }) {
   const [type, setType] = useState('Test')
@@ -114,6 +115,64 @@ function AddEventForm({ students, onAdded, onClose }) {
   )
 }
 
+function AddAnnouncementForm({ onAdded, onClose }) {
+  const [title, setTitle] = useState('')
+  const [body, setBody] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const submit = async (e) => {
+    e.preventDefault()
+    setError('')
+    if (!title.trim() || !body.trim()) {
+      setError('Title and message are both required.')
+      return
+    }
+    setSaving(true)
+    try {
+      await addAnnouncement({ title: title.trim(), body: body.trim() })
+      setTitle('')
+      setBody('')
+      onAdded()
+    } catch (err) {
+      setError(err.message || 'Could not add announcement.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="space-y-3 mt-4 pt-4 border-t border-spark-ink/10 dark:border-white/10">
+      <input
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        placeholder="Title, e.g. Annual Day"
+        className="w-full px-3 py-2 rounded-lg border border-spark-ink/10 dark:border-white/10 dark:bg-transparent dark:text-white text-sm focus:border-spark-orange outline-none"
+      />
+      <textarea
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+        placeholder="Message..."
+        rows={3}
+        className="w-full px-3 py-2 rounded-lg border border-spark-ink/10 dark:border-white/10 dark:bg-transparent dark:text-white text-sm focus:border-spark-orange outline-none resize-none"
+      />
+      {error && <p className="text-xs text-red-500">{error}</p>}
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          disabled={saving}
+          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-full bg-spark-gradient text-white text-sm font-bold shadow-soft disabled:opacity-60"
+        >
+          <FiPlus size={14} /> {saving ? 'Posting...' : 'Post Announcement'}
+        </button>
+        <button type="button" onClick={onClose} className="px-4 py-2 rounded-full text-sm font-semibold text-spark-ink/50 dark:text-white/50 hover:text-spark-ink dark:hover:text-white">
+          Cancel
+        </button>
+      </div>
+    </form>
+  )
+}
+
 export default function DashboardHome() {
   const { user } = useAuth()
   const { selectedStudentId, selectedStudent, students } = useStudentContext()
@@ -129,20 +188,54 @@ export default function DashboardHome() {
 
   const [adminData, setAdminData] = useState(null)
   const [calendarEvents, setCalendarEvents] = useState([])
+  const [calendarLoading, setCalendarLoading] = useState(true)
+  const [calendarYear, setCalendarYear] = useState(TODAY.getFullYear())
+  const [calendarMonth, setCalendarMonth] = useState(TODAY.getMonth() + 1) // 1-12
   const [showAddEvent, setShowAddEvent] = useState(false)
+  const [showAddAnnouncement, setShowAddAnnouncement] = useState(false)
 
   const [loading, setLoading] = useState(true)
 
+  // Announcements are visible to every role, so — like the calendar —
+  // they load independently of the admin-vs-parent/student data effect.
+  const loadAnnouncements = () => {
+    getAnnouncements().then(setAnnouncements)
+  }
+
+  useEffect(() => {
+    loadAnnouncements()
+  }, [])
+
+  // Calendar is visible to every role, so it loads independently of the
+  // admin-vs-parent/student data effect below — and refetches whenever
+  // the admin navigates to a different month.
   const loadCalendar = () => {
-    getCalendarEvents().then(setCalendarEvents)
+    setCalendarLoading(true)
+    getCalendarEvents(`${calendarYear}-${pad(calendarMonth)}`).then((events) => {
+      setCalendarEvents(events)
+      setCalendarLoading(false)
+    })
+  }
+
+  useEffect(() => {
+    loadCalendar()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [calendarYear, calendarMonth])
+
+  const changeCalendarMonth = (delta) => {
+    let newMonth = calendarMonth + delta
+    let newYear = calendarYear
+    if (newMonth > 12) { newMonth = 1; newYear += 1 }
+    if (newMonth < 1) { newMonth = 12; newYear -= 1 }
+    setCalendarMonth(newMonth)
+    setCalendarYear(newYear)
   }
 
   useEffect(() => {
     if (isAdmin) {
       setLoading(true)
-      Promise.all([getAdminDashboard(), getCalendarEvents()]).then(([dash, events]) => {
+      getAdminDashboard().then((dash) => {
         setAdminData(dash)
-        setCalendarEvents(events)
         setLoading(false)
       })
       return
@@ -306,56 +399,88 @@ export default function DashboardHome() {
         </div>
 
         <div className="bg-white dark:bg-white/5 rounded-xl2 shadow-card p-6 border border-spark-ink/5 dark:border-white/10">
-          <h3 className="font-display font-bold text-spark-ink dark:text-white mb-4">Announcements</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-display font-bold text-spark-ink dark:text-white">Announcements</h3>
+            {isAdmin && !showAddAnnouncement && (
+              <button
+                onClick={() => setShowAddAnnouncement(true)}
+                className="flex items-center gap-1 text-xs font-bold text-spark-orange hover:underline"
+              >
+                <FiPlus size={13} /> Add
+              </button>
+            )}
+            {isAdmin && showAddAnnouncement && (
+              <button onClick={() => setShowAddAnnouncement(false)} className="text-spark-ink/40 dark:text-white/40">
+                <FiX size={16} />
+              </button>
+            )}
+          </div>
           <div className="space-y-4">
             {announcements.length === 0 ? (
               <p className="text-sm text-spark-ink/40 dark:text-white/40">No announcements yet.</p>
             ) : (
               announcements.map((a) => (
                 <div key={a.id} className="pb-4 border-b border-spark-ink/5 dark:border-white/10 last:border-0 last:pb-0">
-                  <p className="text-xs text-spark-orange font-bold mb-1">
-                    {new Date(a.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
-                  </p>
+                  <p className="text-xs text-spark-orange font-bold mb-1">{a.date}</p>
                   <p className="text-sm font-semibold text-spark-ink dark:text-white">{a.title}</p>
                   <p className="text-xs text-spark-ink/50 dark:text-white/50 mt-0.5">{a.body}</p>
                 </div>
               ))
             )}
           </div>
-        </div>
-      </div>
-
-      {isAdmin && (
-        <div className="bg-white dark:bg-white/5 rounded-xl2 shadow-card p-6 border border-spark-ink/5 dark:border-white/10 max-w-md">
-          <div className="flex items-center justify-between mb-1">
-            <h3 className="font-display font-bold text-spark-ink dark:text-white">Calendar</h3>
-            {!showAddEvent && (
-              <button
-                onClick={() => setShowAddEvent(true)}
-                className="flex items-center gap-1 text-xs font-bold text-spark-orange hover:underline"
-              >
-                <FiPlus size={13} /> Add Event
-              </button>
-            )}
-            {showAddEvent && (
-              <button onClick={() => setShowAddEvent(false)} className="text-spark-ink/40 dark:text-white/40">
-                <FiX size={16} />
-              </button>
-            )}
-          </div>
-          <Calendar year={TODAY.getFullYear()} month={TODAY.getMonth() + 1} events={calendarEvents} />
-          {showAddEvent && (
-            <AddEventForm
-              students={students}
-              onClose={() => setShowAddEvent(false)}
+          {isAdmin && showAddAnnouncement && (
+            <AddAnnouncementForm
+              onClose={() => setShowAddAnnouncement(false)}
               onAdded={() => {
-                setShowAddEvent(false)
-                loadCalendar()
+                setShowAddAnnouncement(false)
+                loadAnnouncements()
               }}
             />
           )}
         </div>
-      )}
+      </div>
+
+      <div className="bg-white dark:bg-white/5 rounded-xl2 shadow-card p-6 border border-spark-ink/5 dark:border-white/10 max-w-md">
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center gap-1.5">
+            <button onClick={() => changeCalendarMonth(-1)} className="p-1 rounded-full hover:bg-spark-peach dark:hover:bg-white/10">
+              <FiChevronLeft size={16} className="text-spark-ink dark:text-white" />
+            </button>
+            <h3 className="font-display font-bold text-spark-ink dark:text-white">Calendar</h3>
+            <button onClick={() => changeCalendarMonth(1)} className="p-1 rounded-full hover:bg-spark-peach dark:hover:bg-white/10">
+              <FiChevronRight size={16} className="text-spark-ink dark:text-white" />
+            </button>
+          </div>
+          {isAdmin && !showAddEvent && (
+            <button
+              onClick={() => setShowAddEvent(true)}
+              className="flex items-center gap-1 text-xs font-bold text-spark-orange hover:underline"
+            >
+              <FiPlus size={13} /> Add Event
+            </button>
+          )}
+          {isAdmin && showAddEvent && (
+            <button onClick={() => setShowAddEvent(false)} className="text-spark-ink/40 dark:text-white/40">
+              <FiX size={16} />
+            </button>
+          )}
+        </div>
+        {calendarLoading ? (
+          <div className="h-64 rounded-xl bg-spark-peach/30 dark:bg-white/5 animate-pulse mt-3" />
+        ) : (
+          <Calendar year={calendarYear} month={calendarMonth} events={calendarEvents} />
+        )}
+        {isAdmin && showAddEvent && (
+          <AddEventForm
+            students={students}
+            onClose={() => setShowAddEvent(false)}
+            onAdded={() => {
+              setShowAddEvent(false)
+              loadCalendar()
+            }}
+          />
+        )}
+      </div>
 
       {!isAdmin && (
         <div className="bg-white dark:bg-white/5 rounded-xl2 shadow-card p-6 border border-spark-ink/5 dark:border-white/10">
