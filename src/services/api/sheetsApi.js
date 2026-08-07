@@ -212,4 +212,45 @@ export async function getFeeReminders() {
   }
   return callScript('getFeeReminders')
 }
+// Visible to every role. Real mode reads from the ANNOUNCEMENTS sheet
+// (auto-created); mock mode has no real source yet so returns empty.
+export async function getAnnouncements() {
+  if (USE_MOCK) {
+    await delay()
+    return []
+  }
+  return callScript('getAnnouncements')
+}
+// Admin-only in the UI.
+export async function addAnnouncement({ title, body, date }) {
+  if (USE_MOCK) {
+    await delay()
+    return { added: true, title, body }
+  }
+  return postScript_('addAnnouncement', { title, body, date })
+}
 export const isMockMode = USE_MOCK
+// One student's timetable — [{ id, day, time, subject }], Monday-first.
+export async function getTimetable(studentId) {
+  if (USE_MOCK) {
+    await delay()
+    return []
+  }
+  return callScript('getTimetable', { studentId })
+}
+// Admin-only in the UI. { studentId, day, time, subject }.
+export async function addTimetableEntry({ studentId, day, time, subject }) {
+  if (USE_MOCK) {
+    await delay()
+    return { added: true, studentId, day, time, subject }
+  }
+  return postScript_('addTimetableEntry', { studentId, day, time, subject })
+}
+// Admin-only in the UI. id is the row id returned by getTimetable.
+export async function deleteTimetableEntry(id) {
+  if (USE_MOCK) {
+    await delay()
+    return { deleted: true, id }
+  }
+  return postScript_('deleteTimetableEntry', { id })
+}
