@@ -56,22 +56,37 @@ function AttendanceForm({ register, handleSubmit, submit, errors, saving }) {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-semibold text-spark-ink/50 dark:text-white/50 mb-1.5 block">Time In</label>
+              <label className="text-xs font-semibold text-spark-ink/50 dark:text-white/50 mb-1.5 block">Time In <span className="font-normal text-spark-ink/30 dark:text-white/30">(optional)</span></label>
               <input
                 type="time"
-                {...register('timeIn', { required: status === 'present' })}
+                {...register('timeIn')}
                 className="w-full px-4 py-2.5 rounded-xl border border-spark-ink/10 dark:border-white/10 dark:bg-transparent dark:text-white text-sm focus:border-spark-orange outline-none"
               />
             </div>
             <div>
-              <label className="text-xs font-semibold text-spark-ink/50 dark:text-white/50 mb-1.5 block">Time Out</label>
+              <label className="text-xs font-semibold text-spark-ink/50 dark:text-white/50 mb-1.5 block">Time Out <span className="font-normal text-spark-ink/30 dark:text-white/30">(optional)</span></label>
               <input
                 type="time"
-                {...register('timeOut', { required: status === 'present' })}
+                {...register('timeOut')}
                 className="w-full px-4 py-2.5 rounded-xl border border-spark-ink/10 dark:border-white/10 dark:bg-transparent dark:text-white text-sm focus:border-spark-orange outline-none"
               />
             </div>
           </div>
+          <p className="text-xs text-spark-ink/40 dark:text-white/40 -mt-2">
+            Leave both times blank to just log the subject for today — the student can fill in
+            the actual times later via Tap Check-In, and Duration will be calculated automatically.
+          </p>
+
+          <label className="flex items-center gap-2.5 cursor-pointer">
+            <input
+              type="checkbox"
+              {...register('appendMode')}
+              className="w-4 h-4 rounded accent-spark-orange"
+            />
+            <span className="text-sm text-spark-ink dark:text-white">
+              Add as an additional subject today <span className="text-spark-ink/40 dark:text-white/40">(keeps today's existing entry instead of replacing it)</span>
+            </span>
+          </label>
         </>
       )}
 
@@ -148,10 +163,11 @@ export default function AdminAttendance() {
         date: formattedDate,
         topic: isAbsent ? 'ABSENT' : isNoClass ? 'NO CLASS' : data.topic,
         timeIn: isAbsent || isNoClass ? '-' : to12Hour(data.timeIn),
-        timeOut: isAbsent || isNoClass ? '-' : to12Hour(data.timeOut)
+        timeOut: isAbsent || isNoClass ? '-' : to12Hour(data.timeOut),
+        appendMode: !isAbsent && !isNoClass && !!data.appendMode
       })
       setSuccess(`Saved for ${selectedStudent?.name} — ${data.date.split('-').reverse().join('.')}`)
-      reset({ date: data.date, status: 'present', topic: '', timeIn: '', timeOut: '' })
+      reset({ date: data.date, status: 'present', topic: '', timeIn: '', timeOut: '', appendMode: false })
       loadRecent(selectedId)
     } catch (err) {
       setError(err.message || 'Could not save. Please try again.')
