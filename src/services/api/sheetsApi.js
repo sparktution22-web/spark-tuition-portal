@@ -214,12 +214,15 @@ export async function addMarks({ studentId, subject, score, testName, maxScore, 
 // row for that date — { studentId, date: 'dd.MM.yyyy', topic, timeIn,
 // timeOut, month? }. The row must already exist (every day 1-31 already
 // has a blank row); this doesn't create new rows or new month sheets.
-export async function addAttendanceEntry({ studentId, date, topic, timeIn, timeOut, month }) {
+// appendMode: true merges with whatever's already saved for that day
+// (combines subject names, widens the time span) instead of overwriting
+// it — use for "add a second subject on the same day."
+export async function addAttendanceEntry({ studentId, date, topic, timeIn, timeOut, month, appendMode }) {
   if (USE_MOCK) {
     await delay()
     return { saved: true, studentId, date, topic, timeIn, timeOut }
   }
-  return postScript_('addAttendanceEntry', { studentId, date, topic, timeIn, timeOut, month })
+  return postScript_('addAttendanceEntry', { studentId, date, topic, timeIn, timeOut, month, appendMode })
 }
 // Called by the TV kiosk QR scanner. Auto-detects check-in vs check-out
 // based on today's existing row — returns { studentId, studentName,
