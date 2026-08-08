@@ -122,6 +122,17 @@ export default function AdminAttendance() {
 
   const selectedStudent = students.find((s) => s.id === selectedId)
 
+  // Native <input type="time"> always gives 24-hour "HH:MM" — the sheet
+  // uses 12-hour "h:mm AM/PM" (e.g. "7:56 PM"), so this converts before
+  // sending. Without this, times were being written in the wrong format.
+  const to12Hour = (t) => {
+    if (!t) return ''
+    const [h, m] = t.split(':').map(Number)
+    const period = h >= 12 ? 'PM' : 'AM'
+    const hour12 = h % 12 === 0 ? 12 : h % 12
+    return `${hour12}:${String(m).padStart(2, '0')} ${period}`
+  }
+
   const submit = async (data) => {
     setError('')
     setSuccess('')
@@ -136,8 +147,8 @@ export default function AdminAttendance() {
         studentId: selectedId,
         date: formattedDate,
         topic: isAbsent ? 'ABSENT' : isNoClass ? 'NO CLASS' : data.topic,
-        timeIn: isAbsent || isNoClass ? '-' : data.timeIn,
-        timeOut: isAbsent || isNoClass ? '-' : data.timeOut
+        timeIn: isAbsent || isNoClass ? '-' : to12Hour(data.timeIn),
+        timeOut: isAbsent || isNoClass ? '-' : to12Hour(data.timeOut)
       })
       setSuccess(`Saved for ${selectedStudent?.name} — ${data.date.split('-').reverse().join('.')}`)
       reset({ date: data.date, status: 'present', topic: '', timeIn: '', timeOut: '' })
