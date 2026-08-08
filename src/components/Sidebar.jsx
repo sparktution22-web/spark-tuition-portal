@@ -1,7 +1,8 @@
 import { NavLink } from 'react-router-dom'
 import {
   FiGrid, FiCalendar, FiFileText, FiDollarSign, FiAward, FiDownload,
-  FiBell, FiSettings, FiLogOut, FiUsers, FiBarChart2, FiX, FiClock
+  FiBell, FiSettings, FiLogOut, FiUsers, FiBarChart2, FiX, FiClock,
+  FiCamera, FiCheckSquare
 } from 'react-icons/fi'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import sparkLogo from '../assets/spark-logo.png'
@@ -22,7 +23,9 @@ const ADMIN_LINKS = [
   { to: '/app/admin/attendance', label: 'Manage Attendance', icon: FiCalendar },
   { to: '/app/admin/marks', label: 'Manage Marks', icon: FiAward },
   { to: '/app/admin/timetable', label: 'Manage Timetable', icon: FiClock },
-  { to: '/app/admin/analytics', label: 'Analytics', icon: FiBarChart2 }
+  { to: '/app/admin/analytics', label: 'Analytics', icon: FiBarChart2 },
+  { to: '/kiosk', label: 'QR Kiosk Check-In', icon: FiCamera },
+  { to: '/tap-checkin', label: 'Tap Check-In', icon: FiCheckSquare }
 ]
 
 // Links hidden entirely for a given role, keyed by role. Currently just
