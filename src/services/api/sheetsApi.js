@@ -221,6 +221,16 @@ export async function addAttendanceEntry({ studentId, date, topic, timeIn, timeO
   }
   return postScript_('addAttendanceEntry', { studentId, date, topic, timeIn, timeOut, month })
 }
+// Called by the TV kiosk QR scanner. Auto-detects check-in vs check-out
+// based on today's existing row — returns { studentId, studentName,
+// action: 'checked-in'|'checked-out', time }.
+export async function kioskCheckIn(studentId) {
+  if (USE_MOCK) {
+    await delay()
+    return { studentId, studentName: 'Demo Student', action: 'checked-in', time: new Date().toLocaleTimeString() }
+  }
+  return postScript_('kioskCheckIn', { studentId })
+}
 // Admin-only in the UI. Every student with a pending fee balance this
 // month, plus their parent's name/mobile — used to build WhatsApp
 // click-to-chat reminder links.
