@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
-import { FiSearch, FiCheckCircle, FiXCircle, FiArrowLeft } from 'react-icons/fi'
+import { FiSearch, FiCheckCircle, FiXCircle, FiArrowLeft, FiGrid } from 'react-icons/fi'
+import { Link } from 'react-router-dom'
 import { getStudents, kioskCheckIn } from '../services/api/sheetsApi.js'
 
 // exitLabel/onExit are optional — pass them for the admin version's
-// "Exit" button; omit them for the public version, which has nothing to
-// log out of.
-export default function TapCheckInCore({ exitLabel, onExit }) {
+// "Exit" button (logs out); omit them for the public version, which has
+// nothing to log out of. showDashboardLink shows a separate "Dashboard"
+// link that just navigates back without logging out.
+export default function TapCheckInCore({ exitLabel, onExit, showDashboardLink }) {
   const [students, setStudents] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -31,7 +33,7 @@ export default function TapCheckInCore({ exitLabel, onExit }) {
     setProcessing(true)
     try {
       const result = await kioskCheckIn(confirming.id)
-      setStatus({ ok: true, name: result.studentName, action: result.action, time: result.time })
+      setStatus({ ok: true, name: result.studentName, action: result.action, time: result.time, duration: result.duration })
     } catch (err) {
       setStatus({ ok: false, message: err.message || 'Could not process this.' })
     }
@@ -44,14 +46,24 @@ export default function TapCheckInCore({ exitLabel, onExit }) {
     <div className="fixed inset-0 bg-spark-dark text-white flex flex-col overflow-hidden">
       <div className="flex items-center justify-between px-5 py-4 shrink-0">
         <p className="font-display font-extrabold text-xl text-spark-orange">SPARK</p>
-        {onExit && (
-          <button
-            onClick={onExit}
-            className="px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-xs font-semibold transition-colors"
-          >
-            {exitLabel || 'Exit'}
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {showDashboardLink && (
+            <Link
+              to="/app"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-xs font-semibold transition-colors"
+            >
+              <FiGrid size={13} /> Dashboard
+            </Link>
+          )}
+          {onExit && (
+            <button
+              onClick={onExit}
+              className="px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-xs font-semibold transition-colors"
+            >
+              {exitLabel || 'Exit'}
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="px-5 pb-3 shrink-0 max-w-3xl w-full mx-auto">
@@ -122,6 +134,9 @@ export default function TapCheckInCore({ exitLabel, onExit }) {
               <div>
                 <p className="font-display font-bold text-2xl">{status.name}</p>
                 <p className="text-white/90 mt-1 capitalize">{status.action.replace('-', ' ')} at {status.time}</p>
+                {status.action === 'checked-out' && status.duration && (
+                  <p className="text-white/70 text-sm mt-1">Total time: {status.duration.replace(' HRS', '')}</p>
+                )}
               </div>
             </>
           ) : (
