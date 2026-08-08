@@ -11,5 +11,5 @@ export default function TapCheckIn() {
     navigate('/login')
   }
 
-  return <TapCheckInCore exitLabel="Exit" onExit={exit} />
+  return <TapCheckInCore exitLabel="Log Out" onExit={exit} showDashboardLink />
 }
