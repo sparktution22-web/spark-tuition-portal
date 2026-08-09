@@ -1,10 +1,38 @@
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { FiSave, FiCalendar } from 'react-icons/fi'
+import { FiSave, FiCalendar, FiInfo } from 'react-icons/fi'
 import { getStudents, getAttendance, addAttendanceEntry } from '../../services/api/sheetsApi.js'
 import { SkeletonTable } from '../../components/Skeleton.jsx'
 
-function AttendanceForm({ register, handleSubmit, submit, errors, saving }) {
+// Existing-entry preview — looks up whatever's already saved for the
+// selected student+date (from the full attendance array already loaded)
+// and shows it above the form, so admin knows before saving whether
+// they're about to overwrite something or should check "additional
+// subject" instead.
+function ExistingEntryPreview({ existing }) {
+  if (!existing) return null
+  const hasRealData = existing.topic || (existing.timeIn && existing.timeIn !== '-') || (existing.timeOut && existing.timeOut !== '-')
+  if (!hasRealData) {
+    return (
+      <div className="flex items-start gap-2 bg-spark-surface dark:bg-white/5 rounded-xl px-4 py-3 text-xs text-spark-ink/50 dark:text-white/50">
+        <FiInfo className="shrink-0 mt-0.5" size={14} />
+        <span>Nothing saved yet for this date — this will be a fresh entry.</span>
+      </div>
+    )
+  }
+  return (
+    <div className="flex items-start gap-2 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-xl px-4 py-3">
+      <FiInfo className="shrink-0 mt-0.5 text-amber-600" size={14} />
+      <div className="text-xs text-amber-800 dark:text-amber-300">
+        <p className="font-semibold mb-1">Already saved for this date:</p>
+        <p>{existing.topic || '(no subject)'} {existing.timeIn && existing.timeIn !== '-' ? `\u00b7 ${existing.timeIn}` : ''}{existing.timeOut && existing.timeOut !== '-' ? ` \u2013 ${existing.timeOut}` : ''} {existing.duration && existing.duration !== '-' ? `\u00b7 ${existing.duration}` : ''}</p>
+        <p className="mt-1 opacity-80">Saving now will replace this — check "additional subject" below to merge instead.</p>
+      </div>
+    </div>
+  )
+}
+
+function AttendanceForm({ register, handleSubmit, submit, errors, saving, existing }) {
   const [status, setStatus] = useState('present')
 
   return (
@@ -18,6 +46,8 @@ function AttendanceForm({ register, handleSubmit, submit, errors, saving }) {
         />
         {errors.date && <p className="text-xs text-red-500 mt-1">Date is required</p>}
       </div>
+
+      <ExistingEntryPreview existing={existing} />
 
       <div>
         <span className="text-xs font-semibold text-spark-ink/50 dark:text-white/50 mb-1.5 block">Status</span>
@@ -105,13 +135,15 @@ export default function AdminAttendance() {
   const [students, setStudents] = useState([])
   const [selectedId, setSelectedId] = useState('')
   const [loadingStudents, setLoadingStudents] = useState(true)
+  const [attendanceData, setAttendanceData] = useState([]) // full array, for the existing-entry preview
   const [recent, setRecent] = useState([])
   const [loadingRecent, setLoadingRecent] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm()
+  const { register, handleSubmit, reset, watch, formState: { errors } } = useForm()
+  const watchedDate = watch('date')
 
   useEffect(() => {
     getStudents().then((list) => {
@@ -120,10 +152,11 @@ export default function AdminAttendance() {
     })
   }, [])
 
-  const loadRecent = (studentId) => {
+  const loadAttendance = (studentId) => {
     if (!studentId) return
     setLoadingRecent(true)
     getAttendance(studentId).then((data) => {
+      setAttendanceData(data)
       // Most recently recorded (has a topic filled in) days, newest first
       setRecent(data.filter((r) => r.topic).slice(-8).reverse())
       setLoadingRecent(false)
@@ -131,11 +164,20 @@ export default function AdminAttendance() {
   }
 
   useEffect(() => {
-    loadRecent(selectedId)
+    loadAttendance(selectedId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId])
 
   const selectedStudent = students.find((s) => s.id === selectedId)
+
+  // Finds whatever's already saved for the currently-selected date, so
+  // the form can show it as a preview before admin saves over it.
+  const existingForDate = (() => {
+    if (!watchedDate) return null
+    const [y, m, d] = watchedDate.split('-')
+    const formatted = `${d}.${m}.${y}`
+    return attendanceData.find((r) => r.date === formatted) || null
+  })()
 
   // Native <input type="time"> always gives 24-hour "HH:MM" — the sheet
   // uses 12-hour "h:mm AM/PM" (e.g. "7:56 PM"), so this converts before
@@ -168,7 +210,7 @@ export default function AdminAttendance() {
       })
       setSuccess(`Saved for ${selectedStudent?.name} — ${data.date.split('-').reverse().join('.')}`)
       reset({ date: data.date, status: 'present', topic: '', timeIn: '', timeOut: '', appendMode: false })
-      loadRecent(selectedId)
+      loadAttendance(selectedId)
     } catch (err) {
       setError(err.message || 'Could not save. Please try again.')
     } finally {
@@ -202,7 +244,7 @@ export default function AdminAttendance() {
             <h3 className="font-display font-bold text-spark-ink dark:text-white mb-4 flex items-center gap-2">
               <FiCalendar className="text-spark-orange" /> Record Attendance — {selectedStudent?.name}
             </h3>
-            <AttendanceForm register={register} handleSubmit={handleSubmit} submit={submit} errors={errors} saving={saving} />
+            <AttendanceForm register={register} handleSubmit={handleSubmit} submit={submit} errors={errors} saving={saving} existing={existingForDate} />
             {error && <p className="text-sm text-red-500 bg-red-50 rounded-lg px-3 py-2 mt-3">{error}</p>}
             {success && <p className="text-sm text-emerald-600 bg-emerald-50 rounded-lg px-3 py-2 mt-3">{success}</p>}
             <p className="text-xs text-spark-ink/40 dark:text-white/40 mt-4">
