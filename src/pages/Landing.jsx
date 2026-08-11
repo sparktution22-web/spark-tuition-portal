@@ -160,9 +160,6 @@ export default function Landing() {
             </div>
           </motion.div>
 
-            </div>
-          </motion.div>
-
           <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, delay: 0.1 }}>
             <div className="bg-white border border-[#EAE7DF] rounded-lg p-8 shadow-[0_20px_60px_-15px_rgba(20,21,15,0.15)]">
               <div className="flex items-center justify-between mb-6 text-sm">
