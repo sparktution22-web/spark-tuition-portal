@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import {
   FiGrid, FiCalendar, FiFileText, FiDollarSign, FiAward, FiDownload,
   FiBell, FiSettings, FiLogOut, FiUsers, FiBarChart2, FiX, FiClock,
-  FiCamera, FiCheckSquare
+  FiCheckSquare, FiUpload, FiCpu
 } from 'react-icons/fi'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import sparkLogo from '../assets/spark-logo.png'
@@ -13,6 +13,7 @@ const BASE_LINKS = [
   { to: '/app/student-report', label: 'Student Report', icon: FiFileText },
   { to: '/app/fees', label: 'Fees', icon: FiDollarSign },
   { to: '/app/marks', label: 'Test Marks', icon: FiAward },
+  { to: '/app/submit-answer', label: 'Submit Answer Script', icon: FiUpload },
   { to: '/app/timetable', label: 'Timetable', icon: FiClock },
   { to: '/app/reports', label: 'Monthly Reports', icon: FiDownload },
   { to: '/app/notifications', label: 'Notifications', icon: FiBell }
@@ -22,9 +23,10 @@ const ADMIN_LINKS = [
   { to: '/app/admin/students', label: 'Manage Students', icon: FiUsers },
   { to: '/app/admin/attendance', label: 'Manage Attendance', icon: FiCalendar },
   { to: '/app/admin/marks', label: 'Manage Marks', icon: FiAward },
+  { to: '/app/admin/tests', label: 'Manage Tests', icon: FiFileText },
+  { to: '/app/admin/review-submissions', label: 'Review Submissions', icon: FiCpu },
   { to: '/app/admin/timetable', label: 'Manage Timetable', icon: FiClock },
   { to: '/app/admin/analytics', label: 'Analytics', icon: FiBarChart2 },
-  { to: '/kiosk', label: 'QR Kiosk Check-In', icon: FiCamera },
   { to: '/tap-checkin', label: 'Tap Check-In', icon: FiCheckSquare }
 ]
 
@@ -32,7 +34,8 @@ const ADMIN_LINKS = [
 // Fees hidden from students — add more entries here the same way if other
 // tabs should be role-restricted later.
 const HIDDEN_FOR_ROLE = {
-  student: ['/app/fees']
+  student: ['/app/fees'],
+  parent: ['/app/submit-answer']
 }
 
 export default function Sidebar({ open, onClose }) {
