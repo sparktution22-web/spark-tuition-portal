@@ -253,6 +253,71 @@ export async function addAnnouncement({ title, body, date }) {
   return postScript_('addAnnouncement', { title, body, date })
 }
 export const isMockMode = USE_MOCK
+
+// ---- AI answer script grading ----
+
+// Reads a File object into a base64 string (without the data: prefix)
+// for sending to Apps Script, which decodes and saves it to Drive.
+export function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result.split(',')[1])
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
+// Admin-only in the UI. { subject, testName, maxMarks, questionPaperBase64 }.
+export async function createTest({ subject, testName, maxMarks, questionPaperBase64 }) {
+  if (USE_MOCK) {
+    await delay()
+    return { testId: 'MOCK1', subject, testName, maxMarks }
+  }
+  return postScript_('createTest', { subject, testName, maxMarks, questionPaperBase64 })
+}
+// Every test — used by both the student's "pick a test to submit
+// against" dropdown and the admin's test list.
+export async function getTests() {
+  if (USE_MOCK) {
+    await delay()
+    return []
+  }
+  return callScript('getTests')
+}
+// Student-only in the UI. { testId, studentId, answerBase64 } — saves
+// the PDF and grades it with Claude in the same request.
+export async function submitAnswer({ testId, studentId, answerBase64 }) {
+  if (USE_MOCK) {
+    await delay()
+    return { submissionId: 'MOCKSUB1', status: 'Pending Review', aiScore: 0, aiFeedback: '' }
+  }
+  return postScript_('submitAnswer', { testId, studentId, answerBase64 })
+}
+// Admin-only in the UI. Every AI-graded submission awaiting review.
+export async function getSubmissionsForReview() {
+  if (USE_MOCK) {
+    await delay()
+    return []
+  }
+  return callScript('getSubmissionsForReview')
+}
+// Admin-only in the UI. { submissionId, finalScore } — approves
+// (optionally overriding the AI's suggested score), writes into MARKS.
+export async function approveSubmission({ submissionId, finalScore }) {
+  if (USE_MOCK) {
+    await delay()
+    return { submissionId, approved: true, finalScore }
+  }
+  return postScript_('approveSubmission', { submissionId, finalScore })
+}
+// A student's own submissions and their status/score once approved.
+export async function getMySubmissions(studentId) {
+  if (USE_MOCK) {
+    await delay()
+    return []
+  }
+  return callScript('getMySubmissions', { studentId })
+}
 // One student's timetable — [{ id, day, time, subject }], Monday-first.
 export async function getTimetable(studentId) {
   if (USE_MOCK) {
