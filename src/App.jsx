@@ -12,16 +12,18 @@ import Attendance from './pages/dashboard/Attendance.jsx'
 import StudentReport from './pages/dashboard/StudentReport.jsx'
 import Fees from './pages/dashboard/Fees.jsx'
 import TestMarks from './pages/dashboard/TestMarks.jsx'
+import SubmitAnswer from './pages/dashboard/SubmitAnswer.jsx'
 import MonthlyReports from './pages/dashboard/MonthlyReports.jsx'
 import Notifications from './pages/dashboard/Notifications.jsx'
 import Settings from './pages/dashboard/Settings.jsx'
 import AdminStudents from './pages/admin/AdminStudents.jsx'
 import AdminAnalytics from './pages/admin/AdminAnalytics.jsx'
 import AdminMarks from './pages/admin/AdminMarks.jsx'
+import AdminTests from './pages/admin/AdminTests.jsx'
+import AdminReviewSubmissions from './pages/admin/AdminReviewSubmissions.jsx'
 import AdminAttendance from './pages/admin/AdminAttendance.jsx'
 import AdminTimetable from './pages/admin/AdminTimetable.jsx'
 import Timetable from './pages/dashboard/Timetable.jsx'
-import KioskCheckIn from './pages/KioskCheckIn.jsx'
 import TapCheckIn from './pages/TapCheckIn.jsx'
 function App() {
   return (
@@ -31,14 +33,6 @@ function App() {
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route
-            path="/kiosk"
-            element={
-              <ProtectedRoute roles={['admin']}>
-                <KioskCheckIn />
-              </ProtectedRoute>
-            }
-          />
           <Route
             path="/tap-checkin"
             element={
@@ -62,6 +56,7 @@ function App() {
             <Route path="student-report" element={<StudentReport />} />
             <Route path="fees" element={<Fees />} />
             <Route path="marks" element={<TestMarks />} />
+            <Route path="submit-answer" element={<SubmitAnswer />} />
             <Route path="reports" element={<MonthlyReports />} />
             <Route path="timetable" element={<Timetable />} />
             <Route path="notifications" element={<Notifications />} />
@@ -87,6 +82,22 @@ function App() {
               element={
                 <ProtectedRoute roles={['admin']}>
                   <AdminMarks />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="admin/tests"
+              element={
+                <ProtectedRoute roles={['admin']}>
+                  <AdminTests />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="admin/review-submissions"
+              element={
+                <ProtectedRoute roles={['admin']}>
+                  <AdminReviewSubmissions />
                 </ProtectedRoute>
               }
             />
