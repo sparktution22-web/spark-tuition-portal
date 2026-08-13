@@ -104,10 +104,22 @@ export default function SubmitAnswer() {
                 </select>
               </div>
               {selectedTest && (
-                <p className="text-xs text-spark-ink/40 dark:text-white/40">
-                  This test is worth {selectedTest.maxMarks} marks. Make sure your answers are numbered
-                  clearly to match the question paper.
-                </p>
+                <div className="bg-spark-surface dark:bg-white/5 rounded-xl p-4">
+                  <p className="text-xs text-spark-ink/60 dark:text-white/60 mb-2">
+                    This test is worth {selectedTest.maxMarks} marks. Make sure your answers are numbered
+                    clearly to match the question paper.
+                  </p>
+                  {selectedTest.questionPaperFileId && (
+                    <a
+                      href={`https://drive.google.com/file/d/${selectedTest.questionPaperFileId}/view`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 text-xs font-bold text-spark-orange hover:underline"
+                    >
+                      <FiFileText size={13} /> View Question Paper
+                    </a>
+                  )}
+                </div>
               )}
               <div>
                 <label className="text-xs font-semibold text-spark-ink/50 dark:text-white/50 mb-1.5 block">Your Answer Script (PDF)</label>
