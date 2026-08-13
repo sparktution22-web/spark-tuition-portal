@@ -172,6 +172,16 @@ export default function SubmitAnswer() {
                         {s.feedback}
                       </p>
                     )}
+                    {s.status === 'Approved' && s.correctedFileId && (
+                      <a
+                        href={`https://drive.google.com/file/d/${s.correctedFileId}/view`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs font-bold text-spark-orange hover:underline mt-2"
+                      >
+                        <FiFileText size={13} /> View Corrected Answer Script
+                      </a>
+                    )}
                   </div>
                 )
               })}
