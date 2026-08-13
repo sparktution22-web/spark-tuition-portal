@@ -13,7 +13,7 @@ const STATUS_STYLE = {
 }
 
 export default function SubmitAnswer() {
-  const { selectedStudentId } = useStudentContext()
+  const { selectedStudentId, selectedStudent } = useStudentContext()
   const [tests, setTests] = useState([])
   const [submissions, setSubmissions] = useState([])
   const [loading, setLoading] = useState(true)
@@ -26,7 +26,9 @@ export default function SubmitAnswer() {
   const load = () => {
     if (!selectedStudentId) return
     setLoading(true)
-    Promise.all([getTests(), getMySubmissions(selectedStudentId)]).then(([t, s]) => {
+    // Only tests for this student's own class — a test with no class set
+    // (older data) still shows to everyone, handled server-side.
+    Promise.all([getTests(selectedStudent?.class), getMySubmissions(selectedStudentId)]).then(([t, s]) => {
       setTests(t)
       setSubmissions(s)
       setLoading(false)
@@ -138,19 +140,26 @@ export default function SubmitAnswer() {
                 const style = STATUS_STYLE[s.status] || { icon: FiClock, color: 'text-spark-ink/50 bg-spark-surface' }
                 const StatusIcon = style.icon
                 return (
-                  <div key={s.submissionId} className="flex items-center justify-between border-b border-spark-ink/5 dark:border-white/10 last:border-0 pb-3 last:pb-0">
-                    <div>
-                      <p className="text-sm font-semibold text-spark-ink dark:text-white">{s.testName}</p>
-                      <p className="text-xs text-spark-ink/40 dark:text-white/40">{s.subject}</p>
+                  <div key={s.submissionId} className="border-b border-spark-ink/5 dark:border-white/10 last:border-0 pb-3 last:pb-0">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-spark-ink dark:text-white">{s.testName}</p>
+                        <p className="text-xs text-spark-ink/40 dark:text-white/40">{s.subject}</p>
+                      </div>
+                      <div className="text-right">
+                        <span className={`text-xs font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1 ${style.color}`}>
+                          <StatusIcon size={11} /> {s.status}
+                        </span>
+                        {s.status === 'Approved' && s.finalScore != null && (
+                          <p className="text-xs font-mono text-spark-ink/60 dark:text-white/60 mt-1">{s.finalScore}/{s.maxMarks}</p>
+                        )}
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <span className={`text-xs font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1 ${style.color}`}>
-                        <StatusIcon size={11} /> {s.status}
-                      </span>
-                      {s.status === 'Approved' && s.finalScore != null && (
-                        <p className="text-xs font-mono text-spark-ink/60 dark:text-white/60 mt-1">{s.finalScore}/{s.maxMarks}</p>
-                      )}
-                    </div>
+                    {s.feedback && s.status === 'Approved' && (
+                      <p className="text-xs text-spark-ink/50 dark:text-white/50 mt-2 leading-relaxed bg-spark-surface dark:bg-white/5 rounded-lg px-3 py-2">
+                        {s.feedback}
+                      </p>
+                    )}
                   </div>
                 )
               })}
