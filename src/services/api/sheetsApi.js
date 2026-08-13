@@ -267,22 +267,25 @@ export function fileToBase64(file) {
   })
 }
 
-// Admin-only in the UI. { subject, testName, maxMarks, questionPaperBase64 }.
-export async function createTest({ subject, testName, maxMarks, questionPaperBase64 }) {
+// Admin-only in the UI. { subject, testName, maxMarks, className, questionPaperBase64 }.
+// className is which class should see it (e.g. "VIII") — must match the
+// student's Class value exactly, same text as shown in Manage Students.
+export async function createTest({ subject, testName, maxMarks, className, questionPaperBase64 }) {
   if (USE_MOCK) {
     await delay()
-    return { testId: 'MOCK1', subject, testName, maxMarks }
+    return { testId: 'MOCK1', subject, testName, maxMarks, className }
   }
-  return postScript_('createTest', { subject, testName, maxMarks, questionPaperBase64 })
+  return postScript_('createTest', { subject, testName, maxMarks, className, questionPaperBase64 })
 }
-// Every test — used by both the student's "pick a test to submit
-// against" dropdown and the admin's test list.
-export async function getTests() {
+// Pass className to only get tests for that class (what a student's
+// submit-answer page should do); omit it to see every test (what the
+// admin's Manage Tests page should do).
+export async function getTests(className) {
   if (USE_MOCK) {
     await delay()
     return []
   }
-  return callScript('getTests')
+  return callScript('getTests', className ? { className } : {})
 }
 // Student-only in the UI. { testId, studentId, answerBase64 } — saves
 // the PDF and grades it with Claude in the same request.
