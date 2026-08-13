@@ -44,6 +44,11 @@ export default function AdminTests() {
       setError('Question paper must be a PDF file.')
       return
     }
+    const MAX_SIZE_MB = 4
+    if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+      setError(`This file is too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Please keep question papers under ${MAX_SIZE_MB}MB.`)
+      return
+    }
     setSaving(true)
     try {
       const base64 = await fileToBase64(file)
@@ -115,11 +120,18 @@ export default function AdminTests() {
           </p>
           <div>
             <label className="text-xs font-semibold text-spark-ink/50 dark:text-white/50 mb-1.5 block">Question Paper (PDF)</label>
-            <label className="flex items-center gap-2 px-4 py-3 rounded-xl border border-dashed border-spark-ink/20 dark:border-white/20 text-sm text-spark-ink/60 dark:text-white/60 cursor-pointer hover:border-spark-orange transition-colors">
+            <label className={`flex items-center gap-2 px-4 py-3 rounded-xl border border-dashed text-sm cursor-pointer transition-colors ${
+              file && file.size > 4 * 1024 * 1024
+                ? 'border-red-400 text-red-500'
+                : 'border-spark-ink/20 dark:border-white/20 text-spark-ink/60 dark:text-white/60 hover:border-spark-orange'
+            }`}>
               <FiUpload />
-              {file ? file.name : 'Choose a PDF file...'}
+              {file ? `${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB)` : 'Choose a PDF file...'}
               <input type="file" accept="application/pdf" className="hidden" onChange={(e) => setFile(e.target.files[0])} />
             </label>
+            <p className="text-xs font-semibold text-amber-600 bg-amber-50 rounded-lg px-3 py-1.5 mt-1.5 inline-block">
+              Only PDF files under 4MB are accepted
+            </p>
           </div>
           {error && <p className="text-sm text-red-500 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
           {success && <p className="text-sm text-emerald-600 bg-emerald-50 rounded-lg px-3 py-2">{success}</p>}
