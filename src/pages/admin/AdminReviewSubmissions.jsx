@@ -29,14 +29,26 @@ function ReviewCard({ submission, onApproved }) {
           <p className="font-display font-bold text-spark-ink dark:text-white">{submission.studentName}</p>
           <p className="text-xs text-spark-ink/40 dark:text-white/40">{submission.rollNo} &middot; {submission.subject} &middot; {submission.testName}</p>
         </div>
-        <a
-          href={`https://drive.google.com/file/d/${submission.answerFileId}/view`}
-          target="_blank"
-          rel="noreferrer"
-          className="flex items-center gap-1.5 text-xs font-bold text-spark-orange hover:underline"
-        >
-          View Answer PDF <FiExternalLink size={12} />
-        </a>
+        <div className="flex flex-col items-end gap-1">
+          <a
+            href={`https://drive.google.com/file/d/${submission.answerFileId}/view`}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1.5 text-xs font-bold text-spark-orange hover:underline"
+          >
+            View Original Answer PDF <FiExternalLink size={12} />
+          </a>
+          {submission.correctedFileId && (
+            <a
+              href={`https://drive.google.com/file/d/${submission.correctedFileId}/view`}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1.5 text-xs font-bold text-spark-ink/50 dark:text-white/50 hover:underline"
+            >
+              View Corrected PDF (what student will see) <FiExternalLink size={12} />
+            </a>
+          )}
+        </div>
       </div>
 
       <div className="bg-spark-surface dark:bg-white/5 rounded-xl p-4 mb-4">
