@@ -3,7 +3,9 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut as firebaseSignOut,
-  onAuthStateChanged
+  onAuthStateChanged,
+  setPersistence,
+  browserLocalPersistence
 } from 'firebase/auth'
 import { auth, isFirebaseConfigured } from '../services/firebase/config.js'
 import { STUDENTS } from '../services/api/mockData.js'
@@ -42,6 +44,15 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
   useEffect(() => {
     if (isFirebaseConfigured) {
+      // Explicitly LOCAL persistence — stays logged in across browser
+      // restarts/tab closes until an explicit logout(), not just for
+      // the current session. This is Firebase's default anyway, but
+      // set explicitly so it never silently depends on that default.
+      setPersistence(auth, browserLocalPersistence).catch(() => {
+        // Persistence setting can fail in some private-browsing modes —
+        // login still works, it just won't survive a browser restart
+        // in that case. Not worth blocking the app over.
+      })
       const unsub = onAuthStateChanged(auth, (fbUser) => {
         if (fbUser) {
           const { role, studentId } = resolveRole(fbUser.email)
