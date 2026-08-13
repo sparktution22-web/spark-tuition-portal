@@ -66,12 +66,12 @@ export async function getMarks(studentId) {
   }
   return callScript('getMarks', { studentId })
 }
-export async function getNotifications() {
+export async function getNotifications(studentId) {
   if (USE_MOCK) {
     await delay()
     return NOTIFICATIONS
   }
-  return callScript('getNotifications')
+  return callScript('getNotifications', { studentId })
 }
 // Centre-wide overview for the admin dashboard — real mode computes this
 // server-side in one pass (see getAdminDashboard_ in Code.gs). Mock mode
