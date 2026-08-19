@@ -19,9 +19,11 @@ import Settings from './pages/dashboard/Settings.jsx'
 import AdminStudents from './pages/admin/AdminStudents.jsx'
 import AdminAnalytics from './pages/admin/AdminAnalytics.jsx'
 import AdminMarks from './pages/admin/AdminMarks.jsx'
+import AdminFees from './pages/admin/AdminFees.jsx'
 import AdminTests from './pages/admin/AdminTests.jsx'
 import AdminReviewSubmissions from './pages/admin/AdminReviewSubmissions.jsx'
 import AdminAttendance from './pages/admin/AdminAttendance.jsx'
+import AdminScanAttendance from './pages/admin/AdminScanAttendance.jsx'
 import AdminTimetable from './pages/admin/AdminTimetable.jsx'
 import Timetable from './pages/dashboard/Timetable.jsx'
 import TapCheckIn from './pages/TapCheckIn.jsx'
@@ -86,6 +88,14 @@ function App() {
               }
             />
             <Route
+              path="admin/fees"
+              element={
+                <ProtectedRoute roles={['admin']}>
+                  <AdminFees />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="admin/tests"
               element={
                 <ProtectedRoute roles={['admin']}>
@@ -106,6 +116,14 @@ function App() {
               element={
                 <ProtectedRoute roles={['admin']}>
                   <AdminAttendance />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="admin/scan-attendance"
+              element={
+                <ProtectedRoute roles={['admin']}>
+                  <AdminScanAttendance />
                 </ProtectedRoute>
               }
             />
