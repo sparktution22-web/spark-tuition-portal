@@ -244,6 +244,25 @@ export async function getFeeReminders() {
   }
   return callScript('getFeeReminders')
 }
+// Admin-only in the UI. One student's fee record for a given month
+// (omit month for the current one) — Total/Collected/Pending/Status/Paid On.
+export async function getFeeRecord(studentId, month) {
+  if (USE_MOCK) {
+    await delay()
+    return { studentId, total: 0, collected: 0, pending: 0, status: 'Pending', paidOn: '' }
+  }
+  return callScript('getFeeRecord', { studentId, month })
+}
+// Admin-only in the UI. { studentId, collected, month?, paidOn? } —
+// writes directly into the same Collected/Status/Paid On cells manual
+// editing would use. Status is derived automatically server-side.
+export async function updateFeeStatus({ studentId, collected, month, paidOn }) {
+  if (USE_MOCK) {
+    await delay()
+    return { studentId, collected, status: 'Paid' }
+  }
+  return postScript_('updateFeeStatus', { studentId, collected, month, paidOn })
+}
 // Admin-only in the UI.
 export async function addAnnouncement({ title, body, date }) {
   if (USE_MOCK) {
@@ -295,6 +314,16 @@ export async function submitAnswer({ testId, studentId, answerBase64 }) {
     return { submissionId: 'MOCKSUB1', status: 'Pending Review', aiScore: 0, aiFeedback: '' }
   }
   return postScript_('submitAnswer', { testId, studentId, answerBase64 })
+}
+// Admin-only in the UI. Reads a photo of the handwritten attendance
+// page — returns the extracted list ONLY, does not save anything.
+// Each entry: { rollNo, studentName, handwrittenName, timeIn, timeOut, topic }.
+export async function extractAttendanceFromImage(imageBase64, mediaType) {
+  if (USE_MOCK) {
+    await delay()
+    return []
+  }
+  return postScript_('extractAttendanceFromImage', { imageBase64, mediaType })
 }
 // Admin-only in the UI. Every AI-graded submission awaiting review.
 export async function getSubmissionsForReview() {
