@@ -5,10 +5,12 @@ import {
   signOut as firebaseSignOut,
   onAuthStateChanged,
   setPersistence,
-  browserLocalPersistence
+  browserLocalPersistence,
+  updatePassword
 } from 'firebase/auth'
 import { auth, isFirebaseConfigured } from '../services/firebase/config.js'
 import { STUDENTS } from '../services/api/mockData.js'
+import { checkPasswordChangeRequired, clearPasswordChangeRequired } from '../services/api/sheetsApi.js'
 const AuthContext = createContext(null)
 // Demo accounts used only in mock-auth mode (no Firebase configured).
 // Role is resolved from the student roster: parentEmail -> parent,
@@ -53,10 +55,23 @@ export function AuthProvider({ children }) {
         // login still works, it just won't survive a browser restart
         // in that case. Not worth blocking the app over.
       })
-      const unsub = onAuthStateChanged(auth, (fbUser) => {
+      const unsub = onAuthStateChanged(auth, async (fbUser) => {
         if (fbUser) {
           const { role, studentId } = resolveRole(fbUser.email)
-          setUser({ email: fbUser.email, role, studentId, uid: fbUser.uid })
+          // Checked once per login — true means this account was
+          // created by admin with a temporary password and hasn't been
+          // changed yet. Self-registered accounts (Register.jsx) never
+          // get this flag, since they already chose their own password.
+          let mustChangePassword = false
+          try {
+            const result = await checkPasswordChangeRequired(fbUser.email)
+            mustChangePassword = !!result.mustChangePassword
+          } catch {
+            // If this check fails for any reason, don't block login over
+            // it — default to not forcing a change rather than locking
+            // someone out.
+          }
+          setUser({ email: fbUser.email, role, studentId, uid: fbUser.uid, mustChangePassword })
         } else {
           setUser(null)
         }
@@ -101,8 +116,22 @@ export function AuthProvider({ children }) {
     localStorage.removeItem(MOCK_SESSION_KEY)
     setUser(null)
   }
+  // Sets a new password for the CURRENTLY logged-in account (used by
+  // ChangePassword.jsx) and clears the "must change password" flag —
+  // after this, mustChangePassword is false and normal navigation works.
+  const changePassword = async (newPassword) => {
+    if (isFirebaseConfigured) {
+      if (!auth.currentUser) throw new Error('Not logged in.')
+      await updatePassword(auth.currentUser, newPassword)
+      await clearPasswordChangeRequired(auth.currentUser.email)
+      setUser((u) => (u ? { ...u, mustChangePassword: false } : u))
+      return
+    }
+    // Mock mode — nothing to actually change, just clear the flag.
+    setUser((u) => (u ? { ...u, mustChangePassword: false } : u))
+  }
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, isMockAuth: !isFirebaseConfigured }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, changePassword, isMockAuth: !isFirebaseConfigured }}>
       {children}
     </AuthContext.Provider>
   )
