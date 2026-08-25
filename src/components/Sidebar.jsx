@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import {
   FiGrid, FiCalendar, FiFileText, FiDollarSign, FiAward, FiDownload,
   FiBell, FiSettings, FiLogOut, FiUsers, FiBarChart2, FiX, FiClock,
-  FiCheckSquare, FiUpload, FiCpu, FiCamera, FiUserPlus
+  FiCheckSquare, FiUpload, FiCpu, FiCamera, FiUserPlus, FiMessageCircle
 } from 'react-icons/fi'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import sparkLogo from '../assets/spark-logo.png'
@@ -16,7 +16,8 @@ const BASE_LINKS = [
   { to: '/app/submit-answer', label: 'Submit Answer Script', icon: FiUpload },
   { to: '/app/timetable', label: 'Timetable', icon: FiClock },
   { to: '/app/reports', label: 'Monthly Reports', icon: FiDownload },
-  { to: '/app/notifications', label: 'Notifications', icon: FiBell }
+  { to: '/app/notifications', label: 'Notifications', icon: FiBell },
+  { to: '/app/contact-us', label: 'Contact Us', icon: FiMessageCircle }
 ]
 
 const ADMIN_LINKS = [
@@ -33,12 +34,11 @@ const ADMIN_LINKS = [
   { to: '/tap-checkin', label: 'Tap Check-In', icon: FiCheckSquare }
 ]
 
-// Links hidden entirely for a given role, keyed by role. Currently just
-// Fees hidden from students — add more entries here the same way if other
-// tabs should be role-restricted later.
+// Links hidden entirely for a given role, keyed by role.
 const HIDDEN_FOR_ROLE = {
-  student: ['/app/fees'],
-  parent: ['/app/submit-answer']
+  student: ['/app/fees', '/app/contact-us'],
+  parent: ['/app/submit-answer'],
+  admin: ['/app/contact-us']
 }
 
 export default function Sidebar({ open, onClose }) {
