@@ -6,6 +6,8 @@ import ProtectedRoute from './components/ProtectedRoute.jsx'
 import Landing from './pages/Landing.jsx'
 import Login from './pages/Login.jsx'
 import Register from './pages/Register.jsx'
+import ChangePassword from './pages/ChangePassword.jsx'
+import RequirePasswordChange from './components/RequirePasswordChange.jsx'
 import DashboardLayout from './layouts/DashboardLayout.jsx'
 import DashboardHome from './pages/dashboard/DashboardHome.jsx'
 import Attendance from './pages/dashboard/Attendance.jsx'
@@ -20,6 +22,7 @@ import AdminStudents from './pages/admin/AdminStudents.jsx'
 import AdminAnalytics from './pages/admin/AdminAnalytics.jsx'
 import AdminMarks from './pages/admin/AdminMarks.jsx'
 import AdminFees from './pages/admin/AdminFees.jsx'
+import AdminCreateAccount from './pages/admin/AdminCreateAccount.jsx'
 import AdminTests from './pages/admin/AdminTests.jsx'
 import AdminReviewSubmissions from './pages/admin/AdminReviewSubmissions.jsx'
 import AdminAttendance from './pages/admin/AdminAttendance.jsx'
@@ -36,6 +39,14 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route
+            path="/change-password"
+            element={
+              <ProtectedRoute>
+                <ChangePassword />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/tap-checkin"
             element={
               <ProtectedRoute roles={['admin']}>
@@ -47,9 +58,11 @@ function App() {
             path="/app"
             element={
               <ProtectedRoute>
-                <StudentProvider>
-                  <DashboardLayout />
-                </StudentProvider>
+                <RequirePasswordChange>
+                  <StudentProvider>
+                    <DashboardLayout />
+                  </StudentProvider>
+                </RequirePasswordChange>
               </ProtectedRoute>
             }
           >
@@ -92,6 +105,14 @@ function App() {
               element={
                 <ProtectedRoute roles={['admin']}>
                   <AdminFees />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="admin/create-account"
+              element={
+                <ProtectedRoute roles={['admin']}>
+                  <AdminCreateAccount />
                 </ProtectedRoute>
               }
             />
