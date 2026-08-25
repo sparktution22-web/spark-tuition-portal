@@ -271,6 +271,32 @@ export async function addAnnouncement({ title, body, date }) {
   }
   return postScript_('addAnnouncement', { title, body, date })
 }
+// Admin-only in the UI. Flags an email as needing to change its
+// (temporary) password before it can be used normally.
+export async function flagPasswordChangeRequired(email) {
+  if (USE_MOCK) {
+    await delay()
+    return { email, flagged: true }
+  }
+  return postScript_('flagPasswordChangeRequired', { email })
+}
+// Checked right after login — { mustChangePassword: true|false }.
+export async function checkPasswordChangeRequired(email) {
+  if (USE_MOCK) {
+    await delay()
+    return { mustChangePassword: false }
+  }
+  return callScript('checkPasswordChangeRequired', { email })
+}
+// Called once the person has set their own new password.
+export async function clearPasswordChangeRequired(email) {
+  if (USE_MOCK) {
+    await delay()
+    return { email, cleared: true }
+  }
+  return postScript_('clearPasswordChangeRequired', { email })
+}
+
 export const isMockMode = USE_MOCK
 
 // ---- AI answer script grading ----
