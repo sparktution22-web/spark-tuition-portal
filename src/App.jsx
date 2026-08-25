@@ -29,6 +29,7 @@ import AdminAttendance from './pages/admin/AdminAttendance.jsx'
 import AdminScanAttendance from './pages/admin/AdminScanAttendance.jsx'
 import AdminTimetable from './pages/admin/AdminTimetable.jsx'
 import Timetable from './pages/dashboard/Timetable.jsx'
+import ContactUs from './pages/ContactUs.jsx'
 import TapCheckIn from './pages/TapCheckIn.jsx'
 function App() {
   return (
@@ -74,6 +75,7 @@ function App() {
             <Route path="submit-answer" element={<SubmitAnswer />} />
             <Route path="reports" element={<MonthlyReports />} />
             <Route path="timetable" element={<Timetable />} />
+            <Route path="contact-us" element={<ContactUs />} />
             <Route path="notifications" element={<Notifications />} />
             <Route path="settings" element={<Settings />} />
             <Route
