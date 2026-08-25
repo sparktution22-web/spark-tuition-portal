@@ -14,6 +14,7 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showForgotModal, setShowForgotModal] = useState(false)
   // Real mode has two ways to log in: roll number (parent/student) or
   // email (admin — admin accounts are created directly in Firebase, not
   // via /register, since self-serve admin signup would be a security hole).
@@ -157,7 +158,16 @@ export default function Login() {
             </>
           )}
           <div>
-            <label htmlFor="password" className="text-xs font-semibold text-spark-ink/50 mb-1.5 block">Password</label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label htmlFor="password" className="text-xs font-semibold text-spark-ink/50 block">Password</label>
+              <button
+                type="button"
+                onClick={() => setShowForgotModal(true)}
+                className="text-xs font-semibold text-spark-orange hover:underline"
+              >
+                Forgot password?
+              </button>
+            </div>
             <input
               id="password"
               type="password"
@@ -178,6 +188,34 @@ export default function Login() {
           >
             {loading ? 'Logging in...' : 'Log in'}
           </button>
+
+          {showForgotModal && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center px-6 z-50" onClick={() => setShowForgotModal(false)}>
+              <div className="bg-white rounded-2xl p-6 max-w-sm w-full" onClick={(e) => e.stopPropagation()}>
+                <p className="font-display font-bold text-spark-ink mb-2">Forgot your password?</p>
+                <p className="text-sm text-spark-ink/60 leading-relaxed mb-4">
+                  Since accounts here don't use a real email address, password resets can't be sent
+                  automatically. Please contact your tuition centre admin directly — they can reset it
+                  for you right away.
+                </p>
+                <a
+                  href="https://wa.me/919502590645?text=Hi%2C%20I%20forgot%20my%20SPARK%20login%20password%20and%20need%20it%20reset."
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block text-center py-3 rounded-full bg-spark-gradient text-white font-bold text-sm mb-2"
+                >
+                  Message Admin on WhatsApp
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setShowForgotModal(false)}
+                  className="w-full py-2.5 text-sm text-spark-ink/50 font-semibold"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          )}
         </form>
 
         {!isMockAuth && loginMode === 'family' && (
