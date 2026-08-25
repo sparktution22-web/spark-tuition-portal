@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import {
   FiGrid, FiCalendar, FiFileText, FiDollarSign, FiAward, FiDownload,
   FiBell, FiSettings, FiLogOut, FiUsers, FiBarChart2, FiX, FiClock,
-  FiCheckSquare, FiUpload, FiCpu, FiCamera
+  FiCheckSquare, FiUpload, FiCpu, FiCamera, FiUserPlus
 } from 'react-icons/fi'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import sparkLogo from '../assets/spark-logo.png'
@@ -25,6 +25,7 @@ const ADMIN_LINKS = [
   { to: '/app/admin/scan-attendance', label: 'Scan Attendance', icon: FiCamera },
   { to: '/app/admin/marks', label: 'Manage Marks', icon: FiAward },
   { to: '/app/admin/fees', label: 'Manage Fees', icon: FiDollarSign },
+  { to: '/app/admin/create-account', label: 'Create Login', icon: FiUserPlus },
   { to: '/app/admin/tests', label: 'Manage Tests', icon: FiFileText },
   { to: '/app/admin/review-submissions', label: 'Review Submissions', icon: FiCpu },
   { to: '/app/admin/timetable', label: 'Manage Timetable', icon: FiClock },
