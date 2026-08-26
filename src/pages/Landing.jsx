@@ -60,7 +60,7 @@ function Nav({ onNavClick }) {
   return (
     <div className="sticky top-0 z-40 bg-[#0F1420]/95 backdrop-blur border-b border-[#232B3D]">
       <div className="max-w-6xl mx-auto px-6 sm:px-16 py-4 flex items-center justify-between">
-        <img src={sparkLogo} alt="SPARK — Educate, Empower, Enrich" className="h-9 sm:h-10 w-auto" />
+        <img src={sparkLogo} alt="SPARK — Educate, Empower, Enrich" className="h-7 sm:h-10 w-auto" />
         <nav className="hidden md:flex items-center gap-9 text-sm font-medium text-[#9AA3B5]">
           {NAV_LINKS.map((link) => (
             <button key={link.id} onClick={() => onNavClick(link.id)} className="hover:text-[#EDEBE4] transition-colors">
@@ -68,12 +68,12 @@ function Nav({ onNavClick }) {
             </button>
           ))}
         </nav>
-        <div className="flex items-center gap-5 text-sm font-semibold">
-          <Link to="/login" className="text-[#EDEBE4] hover:text-[#E8B84B] transition-colors hidden sm:inline">Log in</Link>
-          <Link to="/register" className="text-[#EDEBE4] hover:text-[#E8B84B] transition-colors hidden sm:inline">Register</Link>
+        <div className="flex items-center gap-3 sm:gap-5 text-xs sm:text-sm font-semibold">
+          <Link to="/login" className="text-[#EDEBE4] hover:text-[#E8B84B] transition-colors">Log in</Link>
+          <Link to="/register" className="text-[#EDEBE4] hover:text-[#E8B84B] transition-colors">Register</Link>
           <button
             onClick={() => onNavClick('contact')}
-            className="bg-[#E8B84B] text-[#0F1420] px-5 py-2.5 rounded-md font-bold hover:bg-[#F0C563] transition-colors"
+            className="bg-[#E8B84B] text-[#0F1420] px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-md font-bold hover:bg-[#F0C563] transition-colors whitespace-nowrap"
           >
             Book a Demo
           </button>
