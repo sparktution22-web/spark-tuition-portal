@@ -6,15 +6,22 @@ import FeeCollectionChart from '../../components/charts/FeeCollectionChart.jsx'
 import AttendanceTrendChart from '../../components/charts/AttendanceTrendChart.jsx'
 import { SkeletonCards, SkeletonBlock } from '../../components/Skeleton.jsx'
 import { formatCurrency } from '../../utils/format.js'
+import { loadCached, saveCache } from '../../utils/pageCache.js'
 
 export default function AdminAnalytics() {
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState(null)
 
   useEffect(() => {
+    const cached = loadCached('spark_cache_admin_analytics')
+    if (cached) {
+      setData(cached)
+      setLoading(false)
+    }
     getAdminAnalytics().then((result) => {
       setData(result)
       setLoading(false)
+      saveCache('spark_cache_admin_analytics', result)
     })
   }, [])
 

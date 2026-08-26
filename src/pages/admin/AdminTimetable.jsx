@@ -4,6 +4,7 @@ import { FiPlus, FiTrash2, FiClock, FiEdit2, FiCheck, FiX } from 'react-icons/fi
 import { getStudents, getTimetable, addTimetableEntry, updateTimetableEntry, deleteTimetableEntry } from '../../services/api/sheetsApi.js'
 import { SkeletonTable } from '../../components/Skeleton.jsx'
 import EmptyState from '../../components/EmptyState.jsx'
+import { loadCached, saveCache } from '../../utils/pageCache.js'
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
@@ -76,9 +77,15 @@ export default function AdminTimetable() {
   const { register, handleSubmit, reset, formState: { errors } } = useForm({ defaultValues: { day: 'Monday' } })
 
   useEffect(() => {
+    const cached = loadCached('spark_cache_admin_students')
+    if (cached) {
+      setStudents(cached)
+      setLoadingStudents(false)
+    }
     getStudents().then((list) => {
       setStudents(list)
       setLoadingStudents(false)
+      saveCache('spark_cache_admin_students', list)
     })
   }, [])
 

@@ -3,6 +3,7 @@ import { FiUpload, FiFileText, FiPlus } from 'react-icons/fi'
 import { getTests, createTest, getStudents, fileToBase64 } from '../../services/api/sheetsApi.js'
 import { SkeletonTable } from '../../components/Skeleton.jsx'
 import EmptyState from '../../components/EmptyState.jsx'
+import { loadCached, saveCache } from '../../utils/pageCache.js'
 
 export default function AdminTests() {
   const [tests, setTests] = useState([])
@@ -18,7 +19,15 @@ export default function AdminTests() {
   const [success, setSuccess] = useState('')
 
   const load = () => {
-    setLoading(true)
+    const cacheKey = 'spark_cache_admin_tests'
+    const cached = loadCached(cacheKey)
+    if (cached) {
+      setTests(cached.tests)
+      setClassOptions(cached.classOptions)
+      setLoading(false)
+    } else {
+      setLoading(true)
+    }
     Promise.all([getTests(), getStudents()]).then(([testList, students]) => {
       setTests(testList)
       // Distinct class values from the real roster, so admin picks from
@@ -27,6 +36,7 @@ export default function AdminTests() {
       const distinct = [...new Set(students.map((s) => s.class).filter(Boolean))]
       setClassOptions(distinct)
       setLoading(false)
+      saveCache(cacheKey, { tests: testList, classOptions: distinct })
     })
   }
 

@@ -3,6 +3,7 @@ import { FiDollarSign, FiCheckCircle, FiClock } from 'react-icons/fi'
 import { getStudents, getFeeRecord, updateFeeStatus } from '../../services/api/sheetsApi.js'
 import { formatCurrency } from '../../utils/format.js'
 import { SkeletonTable } from '../../components/Skeleton.jsx'
+import { loadCached, saveCache } from '../../utils/pageCache.js'
 
 export default function AdminFees() {
   const [students, setStudents] = useState([])
@@ -17,9 +18,15 @@ export default function AdminFees() {
   const [recordError, setRecordError] = useState('')
 
   useEffect(() => {
+    const cached = loadCached('spark_cache_admin_students')
+    if (cached) {
+      setStudents(cached)
+      setLoadingStudents(false)
+    }
     getStudents().then((list) => {
       setStudents(list)
       setLoadingStudents(false)
+      saveCache('spark_cache_admin_students', list)
     })
   }, [])
 

@@ -3,6 +3,7 @@ import { FiCheckCircle, FiExternalLink, FiCpu } from 'react-icons/fi'
 import { getSubmissionsForReview, approveSubmission } from '../../services/api/sheetsApi.js'
 import { SkeletonTable } from '../../components/Skeleton.jsx'
 import EmptyState from '../../components/EmptyState.jsx'
+import { loadCached, saveCache } from '../../utils/pageCache.js'
 
 function ReviewCard({ submission, onApproved }) {
   const [finalScore, setFinalScore] = useState(submission.aiScore)
@@ -88,10 +89,17 @@ export default function AdminReviewSubmissions() {
   const [loading, setLoading] = useState(true)
 
   const load = () => {
-    setLoading(true)
+    const cached = loadCached('spark_cache_admin_review')
+    if (cached) {
+      setSubmissions(cached)
+      setLoading(false)
+    } else {
+      setLoading(true)
+    }
     getSubmissionsForReview().then((list) => {
       setSubmissions(list)
       setLoading(false)
+      saveCache('spark_cache_admin_review', list)
     })
   }
 

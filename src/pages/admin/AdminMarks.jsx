@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form'
 import { getStudents, getMarks, addMarks } from '../../services/api/sheetsApi.js'
 import { SkeletonTable } from '../../components/Skeleton.jsx'
 import EmptyState from '../../components/EmptyState.jsx'
+import { loadCached, saveCache } from '../../utils/pageCache.js'
 
 export default function AdminMarks() {
   const [students, setStudents] = useState([])
@@ -17,9 +18,15 @@ export default function AdminMarks() {
   const { register, handleSubmit, reset, formState: { errors } } = useForm()
 
   useEffect(() => {
+    const cached = loadCached('spark_cache_admin_students')
+    if (cached) {
+      setStudents(cached)
+      setLoadingStudents(false)
+    }
     getStudents().then((list) => {
       setStudents(list)
       setLoadingStudents(false)
+      saveCache('spark_cache_admin_students', list)
     })
   }, [])
 
