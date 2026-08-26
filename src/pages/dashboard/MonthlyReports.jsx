@@ -4,21 +4,34 @@ import { motion } from 'framer-motion'
 import { useStudentContext } from '../../contexts/StudentContext.jsx'
 import { getDashboardData } from '../../services/api/sheetsApi.js'
 import { generateMonthlyReportPDF } from '../../utils/pdfGenerator.js'
+import { loadCached, saveCache } from '../../utils/pageCache.js'
 import StudentSwitcher from '../../components/StudentSwitcher.jsx'
 import { SkeletonBlock } from '../../components/Skeleton.jsx'
 
-// label shown on the button + the 'YYYY-MM' key the backend uses to pick
-// the right month's spreadsheet (see MONTH_SHEET_IDS in Code.gs — a month
-// not added there yet will show a friendly "not available" message
-// instead of crashing or silently showing another month's data).
-const MONTHS = [
-  { label: 'April 2026', key: '2026-04' },
-  { label: 'May 2026', key: '2026-05' },
-  { label: 'June 2026', key: '2026-06' },
-  { label: 'July 2026', key: '2026-07' },
-  { label: 'August 2026', key: '2026-08' }
-]
-const CURRENT_MONTH_KEY = '2026-08'
+// Months from April 2026 (earliest month with real data) through
+// whatever the CURRENT real month is, generated automatically — no
+// manual updates needed here as new months arrive. The backend now
+// grows its attendance sheet automatically month to month too (see the
+// MONTH_SHEET_IDS comment in Code.gs), so this list and the backend
+// stay in sync without anyone needing to touch either one each month.
+const EARLIEST_MONTH = { year: 2026, month: 4 } // April 2026
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+
+function generateMonthsList() {
+  const now = new Date()
+  const months = []
+  let y = EARLIEST_MONTH.year
+  let m = EARLIEST_MONTH.month
+  while (y < now.getFullYear() || (y === now.getFullYear() && m <= now.getMonth() + 1)) {
+    months.push({ label: `${MONTH_NAMES[m - 1]} ${y}`, key: `${y}-${String(m).padStart(2, '0')}` })
+    m++
+    if (m > 12) { m = 1; y++ }
+  }
+  return months
+}
+
+const MONTHS = generateMonthsList()
+const CURRENT_MONTH_KEY = MONTHS[MONTHS.length - 1].key
 
 export default function MonthlyReports() {
   const { selectedStudentId, selectedStudent } = useStudentContext()
@@ -32,13 +45,24 @@ export default function MonthlyReports() {
 
   const loadMonth = (monthKey) => {
     if (!selectedStudentId) return
-    setLoading(true)
+    const cacheKey = 'spark_cache_report_' + selectedStudentId + '_' + monthKey
+    const cached = loadCached(cacheKey)
+    if (cached) {
+      setInfo(cached.info)
+      setAttendance(cached.attendance)
+      setMarks(cached.marks)
+      setMonthError('')
+      setLoading(false)
+    } else {
+      setLoading(true)
+    }
     setMonthError('')
     return getDashboardData(selectedStudentId, monthKey)
       .then(({ info, attendance, marks }) => {
         setInfo(info)
         setAttendance(attendance)
         setMarks(marks)
+        saveCache(cacheKey, { info, attendance, marks })
       })
       .catch((err) => {
         setInfo(null)
