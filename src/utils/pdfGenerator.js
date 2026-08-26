@@ -71,10 +71,11 @@ export function generateMonthlyReportPDF({ student, attendance, marks, monthLabe
   )
 
   const summary = summarizeAttendance(attendance)
+  const plannedTotal = student.totalClasses || summary.total
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(9)
   doc.setTextColor(...BRAND_ORANGE)
-  doc.text(`Total Classes: ${summary.total}   \u00b7   Attendance: ${summary.pct}%`, pageWidth - margin, y, { align: 'right' })
+  doc.text(`Total Classes: ${plannedTotal}   \u00b7   Attendance: ${summary.pct}%`, pageWidth - margin, y, { align: 'right' })
 
   y += 34
 
@@ -114,7 +115,6 @@ export function generateMonthlyReportPDF({ student, attendance, marks, monthLabe
   })
   const summaryEndY = doc.lastAutoTable.finalY
 
-  const overallPct = marks.length ? Math.round(marks.reduce((s, m) => s + m.score, 0) / marks.length) : 0
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(11)
   doc.setTextColor(...INK)
@@ -130,17 +130,48 @@ export function generateMonthlyReportPDF({ student, attendance, marks, monthLabe
       margin: { left: margin + 280 },
       tableWidth: pageWidth - margin - (margin + 280),
       head: [['Subject', 'Score', 'Grade']],
-      body: marks.map((m) => [m.subject, `${m.score}/${m.max}`, gradeFromPercent(m.score)]),
-      foot: [['Overall', `${overallPct}%`, gradeFromPercent(overallPct)]],
+      // Grade is computed from each test's actual PERCENTAGE
+      // (score/max), not the raw score — a raw score of e.g. 26 isn't
+      // meaningful as a percentage unless the test happened to be out
+      // of exactly 100. No "Overall" row — averaging raw scores across
+      // tests with different max marks produced a meaningless number
+      // (see Performance Feedback below for actual test-by-test
+      // performance instead of one misleading combined figure).
+      body: marks.map((m) => [m.subject, `${m.score}/${m.max}`, gradeFromPercent(Math.round((m.score / m.max) * 100))]),
       styles: { fontSize: 8.5, cellPadding: 4, textColor: INK },
       headStyles: { fillColor: BRAND_ORANGE, textColor: [255, 255, 255], fontStyle: 'bold' },
-      footStyles: { fillColor: [255, 233, 217], textColor: INK, fontStyle: 'bold' },
       theme: 'grid'
     })
   }
   const marksEndY = doc.lastAutoTable ? doc.lastAutoTable.finalY : summaryEndY
 
   y = Math.max(summaryEndY, marksEndY) + 30
+
+  // --- Performance feedback (from AI-graded tests that have real
+  // feedback text saved with them; manually-entered marks have none) ---
+  const marksWithFeedback = marks.filter((m) => m.feedback && m.feedback.trim())
+  if (marksWithFeedback.length > 0) {
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(10)
+    doc.setTextColor(...INK)
+    doc.text('Performance Feedback', margin, y)
+    y += 16
+    marksWithFeedback.forEach((m) => {
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(8.5)
+      doc.setTextColor(...INK)
+      const label = m.testName ? `${m.subject} \u2014 ${m.testName}` : m.subject
+      doc.text(label, margin, y)
+      y += 12
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8.5)
+      doc.setTextColor(...MUTED)
+      const wrapped = doc.splitTextToSize(m.feedback, pageWidth - margin * 2)
+      doc.text(wrapped, margin, y)
+      y += wrapped.length * 11 + 10
+    })
+    y += 10
+  }
 
   // --- Teacher remarks ---
   // Left blank for the teacher to fill in by hand (or wire up a real
