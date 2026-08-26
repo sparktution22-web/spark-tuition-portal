@@ -8,21 +8,30 @@ import { loadCached, saveCache } from '../../utils/pageCache.js'
 import StudentSwitcher from '../../components/StudentSwitcher.jsx'
 import { SkeletonBlock } from '../../components/Skeleton.jsx'
 
-// Months from April 2026 (earliest month with real data) through
-// whatever the CURRENT real month is, generated automatically — no
-// manual updates needed here as new months arrive. The backend now
-// grows its attendance sheet automatically month to month too (see the
-// MONTH_SHEET_IDS comment in Code.gs), so this list and the backend
-// stay in sync without anyone needing to touch either one each month.
+// Months from April 2026 (earliest month with real data) through a
+// few months past today, generated automatically — no manual updates
+// needed here as new months arrive. Deliberately extends PAST today's
+// real calendar date (not just up to it) — admin sometimes enters a
+// month's attendance ahead of schedule (e.g. filling in September
+// before September actually arrives), and this dropdown needs to offer
+// that month as soon as it exists, not wait for the calendar to catch
+// up. Selecting a month with no data yet just shows a friendly empty
+// state below — no harm in listing a few months further than strictly
+// necessary.
 const EARLIEST_MONTH = { year: 2026, month: 4 } // April 2026
+const MONTHS_AHEAD_BUFFER = 3
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
 function generateMonthsList() {
   const now = new Date()
+  let endYear = now.getFullYear()
+  let endMonth = now.getMonth() + 1 + MONTHS_AHEAD_BUFFER
+  while (endMonth > 12) { endMonth -= 12; endYear += 1 }
+
   const months = []
   let y = EARLIEST_MONTH.year
   let m = EARLIEST_MONTH.month
-  while (y < now.getFullYear() || (y === now.getFullYear() && m <= now.getMonth() + 1)) {
+  while (y < endYear || (y === endYear && m <= endMonth)) {
     months.push({ label: `${MONTH_NAMES[m - 1]} ${y}`, key: `${y}-${String(m).padStart(2, '0')}` })
     m++
     if (m > 12) { m = 1; y++ }
@@ -31,7 +40,8 @@ function generateMonthsList() {
 }
 
 const MONTHS = generateMonthsList()
-const CURRENT_MONTH_KEY = MONTHS[MONTHS.length - 1].key
+const _now = new Date()
+const CURRENT_MONTH_KEY = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, '0')}`
 
 export default function MonthlyReports() {
   const { selectedStudentId, selectedStudent } = useStudentContext()
