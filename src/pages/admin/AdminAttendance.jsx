@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form'
 import { FiSave, FiCalendar, FiInfo } from 'react-icons/fi'
 import { getStudents, getAttendance, addAttendanceEntry } from '../../services/api/sheetsApi.js'
 import { SkeletonTable } from '../../components/Skeleton.jsx'
+import { loadCached, saveCache } from '../../utils/pageCache.js'
 
 // Existing-entry preview — looks up whatever's already saved for the
 // selected student+date (from the full attendance array already loaded)
@@ -146,9 +147,15 @@ export default function AdminAttendance() {
   const watchedDate = watch('date')
 
   useEffect(() => {
+    const cached = loadCached('spark_cache_admin_students')
+    if (cached) {
+      setStudents(cached)
+      setLoadingStudents(false)
+    }
     getStudents().then((list) => {
       setStudents(list)
       setLoadingStudents(false)
+      saveCache('spark_cache_admin_students', list)
     })
   }, [])
 
