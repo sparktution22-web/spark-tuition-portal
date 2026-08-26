@@ -8,6 +8,7 @@ import { useAuth } from '../../contexts/AuthContext.jsx'
 import { useStudentContext } from '../../contexts/StudentContext.jsx'
 import { getDashboardData, getAdminDashboard, getCalendarEvents, addEvent, getAnnouncements, addAnnouncement } from '../../services/api/sheetsApi.js'
 import { summarizeAttendance } from '../../utils/format.js'
+import { loadCached, saveCache } from '../../utils/pageCache.js'
 import StatCard from '../../components/StatCard.jsx'
 import StudentSwitcher from '../../components/StudentSwitcher.jsx'
 import AttendanceTrendChart from '../../components/charts/AttendanceTrendChart.jsx'
@@ -199,7 +200,12 @@ export default function DashboardHome() {
   // Announcements are visible to every role, so — like the calendar —
   // they load independently of the admin-vs-parent/student data effect.
   const loadAnnouncements = () => {
-    getAnnouncements().then(setAnnouncements)
+    const cached = loadCached('spark_cache_announcements')
+    if (cached) setAnnouncements(cached)
+    getAnnouncements().then((data) => {
+      setAnnouncements(data)
+      saveCache('spark_cache_announcements', data)
+    })
   }
 
   useEffect(() => {
@@ -210,10 +216,18 @@ export default function DashboardHome() {
   // admin-vs-parent/student data effect below — and refetches whenever
   // the admin navigates to a different month.
   const loadCalendar = () => {
-    setCalendarLoading(true)
+    const cacheKey = `spark_cache_calendar_${calendarYear}-${pad(calendarMonth)}`
+    const cached = loadCached(cacheKey)
+    if (cached) {
+      setCalendarEvents(cached)
+      setCalendarLoading(false)
+    } else {
+      setCalendarLoading(true)
+    }
     getCalendarEvents(`${calendarYear}-${pad(calendarMonth)}`).then((events) => {
       setCalendarEvents(events)
       setCalendarLoading(false)
+      saveCache(cacheKey, events)
     })
   }
 
@@ -233,23 +247,44 @@ export default function DashboardHome() {
 
   useEffect(() => {
     if (isAdmin) {
-      setLoading(true)
+      const cacheKey = 'spark_cache_admin_dashboard'
+      const cached = loadCached(cacheKey)
+      if (cached) {
+        setAdminData(cached)
+        setLoading(false)
+      } else {
+        setLoading(true)
+      }
       getAdminDashboard().then((dash) => {
         setAdminData(dash)
         setLoading(false)
+        saveCache(cacheKey, dash)
       })
       return
     }
     if (!selectedStudentId) return
-    setLoading(true)
-    getDashboardData(selectedStudentId).then(({ info, attendance, fees, marks, notifications, announcements }) => {
-      setInfo(info)
-      setAttendance(attendance)
-      setFees(fees)
-      setMarks(marks)
-      setNotifications(notifications)
-      setAnnouncements(announcements)
+    const cacheKey = 'spark_cache_dashboard_' + selectedStudentId
+    const cached = loadCached(cacheKey)
+    if (cached) {
+      setInfo(cached.info)
+      setAttendance(cached.attendance)
+      setFees(cached.fees)
+      setMarks(cached.marks)
+      setNotifications(cached.notifications)
+      setAnnouncements(cached.announcements)
       setLoading(false)
+    } else {
+      setLoading(true)
+    }
+    getDashboardData(selectedStudentId).then((result) => {
+      setInfo(result.info)
+      setAttendance(result.attendance)
+      setFees(result.fees)
+      setMarks(result.marks)
+      setNotifications(result.notifications)
+      setAnnouncements(result.announcements)
+      setLoading(false)
+      saveCache(cacheKey, result)
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdmin, selectedStudentId])
@@ -305,12 +340,14 @@ export default function DashboardHome() {
             {isAdmin ? 'Centre Overview' : 'Your Overview'}
           </p>
           <h2 className="font-display font-bold text-2xl sm:text-3xl mb-1">
-            {isAdmin ? `${adminData?.totalStudents ?? 0} students, one live view` : selectedStudent?.name || '\u2014'}
+            {isAdmin
+              ? `${adminData?.totalStudents ?? 0} students, one live view`
+              : `${selectedStudent?.name || '\u2014'} \u00b7 Roll No. ${selectedStudent?.rollNo || '\u2014'}`}
           </h2>
           <p className="text-white/80 text-sm">
             {isAdmin
               ? adminData?.today || ''
-              : `Class ${selectedStudent?.class} \u00b7 Roll No. ${selectedStudent?.rollNo} \u00b7 August 2026`}
+              : `Class ${selectedStudent?.class} \u00b7 August 2026`}
           </p>
         </div>
       </motion.div>
