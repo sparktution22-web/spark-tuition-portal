@@ -1,4 +1,5 @@
 import { Routes, Route } from 'react-router-dom'
+import { useEffect } from 'react'
 import { AuthProvider } from './contexts/AuthContext.jsx'
 import { ThemeProvider } from './contexts/ThemeContext.jsx'
 import { StudentProvider } from './contexts/StudentContext.jsx'
@@ -8,6 +9,7 @@ import Login from './pages/Login.jsx'
 import Register from './pages/Register.jsx'
 import ChangePassword from './pages/ChangePassword.jsx'
 import RequirePasswordChange from './components/RequirePasswordChange.jsx'
+import { listenForForegroundPushNotifications } from './utils/pushNotifications.js'
 import DashboardLayout from './layouts/DashboardLayout.jsx'
 import DashboardHome from './pages/dashboard/DashboardHome.jsx'
 import Attendance from './pages/dashboard/Attendance.jsx'
@@ -34,6 +36,13 @@ import Homework from './pages/Homework.jsx'
 import ContactUs from './pages/ContactUs.jsx'
 import TapCheckIn from './pages/TapCheckIn.jsx'
 function App() {
+  useEffect(() => {
+    // Handles a push arriving while the app is already open in a tab —
+    // the service worker's 'push' handler only fires for background/
+    // closed-app notifications, so this covers the foreground case.
+    listenForForegroundPushNotifications()
+  }, [])
+
   return (
     <ThemeProvider>
       <AuthProvider>
