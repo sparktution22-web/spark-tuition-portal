@@ -10,7 +10,16 @@ const USE_MOCK = !SCRIPT_URL
 async function callScript(action, params = {}, attempt = 1) {
   const url = new URL(SCRIPT_URL)
   url.searchParams.set('action', action)
-  Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v))
+  // Skip undefined/null values entirely — URLSearchParams.set() would
+  // otherwise stringify a genuinely-missing optional parameter (like
+  // month when nobody passes one) into the literal text "undefined",
+  // which the backend then treats as a real, meaningful value instead
+  // of "not provided". This was the actual cause of Test Marks coming
+  // back empty: month=undefined was being sent as a real filter value
+  // that matched nothing, wiping out every result.
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== null) url.searchParams.set(k, v)
+  })
   try {
     const res = await fetch(url.toString())
     if (!res.ok) throw new Error(`Apps Script request failed: ${action}`)
