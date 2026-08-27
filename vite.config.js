@@ -1,13 +1,24 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
-
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      // Switched from the default 'generateSW' to 'injectManifest' —
+      // needed to add a custom "push" event handler for real push
+      // notifications, which generateSW's fully-automatic service
+      // worker has no way to support. src/sw.js (new file) now contains
+      // the actual service worker logic; Vite/Workbox injects the
+      // precache file list into it at build time.
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.js',
+      injectManifest: {
+        globPatterns: ['**/*.{js,css,html,png,svg,ico}']
+      },
       includeAssets: ['spark-logo.png'],
       manifest: {
         name: 'SPARK Tuition Portal',
@@ -19,22 +30,6 @@ export default defineConfig({
         start_url: '/',
         icons: [
           { src: '/spark-logo.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
-        ]
-      },
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,png,svg,ico}'],
-        runtimeCaching: [
-          {
-            // Google Apps Script API responses: network-first so data stays fresh,
-            // falling back to cache when offline.
-            urlPattern: ({ url }) => url.origin === 'https://script.google.com',
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'spark-api-cache',
-              networkTimeoutSeconds: 8,
-              expiration: { maxEntries: 50, maxAgeSeconds: 60 * 60 * 6 }
-            }
-          }
         ]
       }
     })
