@@ -12,7 +12,7 @@ const MUTED = [120, 120, 120]
  * download. Matches the spec: header/branding, student info, day-wise
  * attendance table, summary, subject marks, remarks, and signature lines.
  */
-export function generateMonthlyReportPDF({ student, attendance, marks, monthLabel = 'August 2026' }) {
+export function generateMonthlyReportPDF({ student, attendance, marks, monthLabel = 'August 2026', performanceSummary }) {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' })
   const pageWidth = doc.internal.pageSize.getWidth()
   const margin = 40
@@ -147,14 +147,49 @@ export function generateMonthlyReportPDF({ student, attendance, marks, monthLabe
 
   y = Math.max(summaryEndY, marksEndY) + 30
 
-  // --- Performance feedback (from AI-graded tests that have real
-  // feedback text saved with them; manually-entered marks have none) ---
+  // --- Overall monthly performance summary + improvement points (AI-
+  // synthesized across all of this month's tests) — shown before the
+  // per-test breakdown below, since this is the "big picture" view. ---
+  if (performanceSummary && (performanceSummary.summary || performanceSummary.improvementPoints?.length)) {
+    if (performanceSummary.summary) {
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(10)
+      doc.setTextColor(...INK)
+      doc.text('This Month\u2019s Performance', margin, y)
+      y += 16
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8.5)
+      doc.setTextColor(...MUTED)
+      const wrappedSummary = doc.splitTextToSize(performanceSummary.summary, pageWidth - margin * 2)
+      doc.text(wrappedSummary, margin, y)
+      y += wrappedSummary.length * 11 + 16
+    }
+    if (performanceSummary.improvementPoints && performanceSummary.improvementPoints.length > 0) {
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(10)
+      doc.setTextColor(...INK)
+      doc.text('Points to Improve', margin, y)
+      y += 16
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8.5)
+      doc.setTextColor(...MUTED)
+      performanceSummary.improvementPoints.forEach((point) => {
+        const wrapped = doc.splitTextToSize('\u2022 ' + point, pageWidth - margin * 2)
+        doc.text(wrapped, margin, y)
+        y += wrapped.length * 11 + 4
+      })
+      y += 12
+    }
+  }
+
+  // --- Per-test feedback (from AI-graded tests that have real feedback
+  // text saved with them; manually-entered marks have none) ---
   const marksWithFeedback = marks.filter((m) => m.feedback && m.feedback.trim())
   if (marksWithFeedback.length > 0) {
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(10)
     doc.setTextColor(...INK)
-    doc.text('Performance Feedback', margin, y)
+    doc.text('Test-by-Test Feedback', margin, y)
     y += 16
     marksWithFeedback.forEach((m) => {
       doc.setFont('helvetica', 'bold')
