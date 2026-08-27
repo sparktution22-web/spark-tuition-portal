@@ -379,6 +379,17 @@ export async function getHomeworkCompletion(homeworkId) {
   return callScript('getHomeworkCompletion', { homeworkId })
 }
 
+// Saves this login's push notification token — called once after the
+// person grants notification permission and Firebase Messaging hands
+// back a token.
+export async function savePushToken(email, token) {
+  if (USE_MOCK) {
+    await delay()
+    return { email, saved: true }
+  }
+  return postScript_('savePushToken', { email, token })
+}
+
 export const isMockMode = USE_MOCK
 
 // ---- AI answer script grading ----
