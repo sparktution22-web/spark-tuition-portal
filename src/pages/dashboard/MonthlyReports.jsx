@@ -2,49 +2,35 @@ import { useEffect, useState } from 'react'
 import { FiDownload, FiFileText, FiCalendar } from 'react-icons/fi'
 import { motion } from 'framer-motion'
 import { useStudentContext } from '../../contexts/StudentContext.jsx'
-import { getDashboardData, getMonthlyPerformanceSummary } from '../../services/api/sheetsApi.js'
+import { getDashboardData, getMonthlyPerformanceSummary, getAvailableReportMonths } from '../../services/api/sheetsApi.js'
 import { generateMonthlyReportPDF } from '../../utils/pdfGenerator.js'
 import { loadCached, saveCache } from '../../utils/pageCache.js'
 import StudentSwitcher from '../../components/StudentSwitcher.jsx'
 import { SkeletonBlock } from '../../components/Skeleton.jsx'
 
-// Months from April 2026 (earliest month with real data) through a
-// few months past today, generated automatically — no manual updates
-// needed here as new months arrive. Deliberately extends PAST today's
-// real calendar date (not just up to it) — admin sometimes enters a
-// month's attendance ahead of schedule (e.g. filling in September
-// before September actually arrives), and this dropdown needs to offer
-// that month as soon as it exists, not wait for the calendar to catch
-// up. Selecting a month with no data yet just shows a friendly empty
-// state below — no harm in listing a few months further than strictly
-// necessary.
-const EARLIEST_MONTH = { year: 2026, month: 4 } // April 2026
-const MONTHS_AHEAD_BUFFER = 3
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
-function generateMonthsList() {
-  const now = new Date()
-  let endYear = now.getFullYear()
-  let endMonth = now.getMonth() + 1 + MONTHS_AHEAD_BUFFER
-  while (endMonth > 12) { endMonth -= 12; endYear += 1 }
-
-  const months = []
-  let y = EARLIEST_MONTH.year
-  let m = EARLIEST_MONTH.month
-  while (y < endYear || (y === endYear && m <= endMonth)) {
-    months.push({ label: `${MONTH_NAMES[m - 1]} ${y}`, key: `${y}-${String(m).padStart(2, '0')}` })
-    m++
-    if (m > 12) { m = 1; y++ }
-  }
-  return months
+// Builds display labels from real 'YYYY-MM' keys returned by the
+// backend (getAvailableReportMonths) — this list reflects exactly which
+// months genuinely have data for this student, never a future month
+// that's still empty, and never missing a month the admin has gotten
+// ahead on (e.g. entering September before September actually starts).
+function keysToMonthOptions(keys) {
+  return keys
+    .slice()
+    .sort()
+    .map((key) => {
+      const [y, m] = key.split('-')
+      return { label: `${MONTH_NAMES[Number(m) - 1]} ${y}`, key }
+    })
 }
 
-const MONTHS = generateMonthsList()
 const _now = new Date()
 const CURRENT_MONTH_KEY = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, '0')}`
 
 export default function MonthlyReports() {
   const { selectedStudentId, selectedStudent } = useStudentContext()
+  const [availableMonths, setAvailableMonths] = useState([])
   const [selectedMonthKey, setSelectedMonthKey] = useState(CURRENT_MONTH_KEY)
   const [info, setInfo] = useState(null)
   const [attendance, setAttendance] = useState([])
@@ -52,6 +38,23 @@ export default function MonthlyReports() {
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
   const [monthError, setMonthError] = useState('')
+
+  useEffect(() => {
+    if (!selectedStudentId) return
+    getAvailableReportMonths(selectedStudentId).then((keys) => {
+      const options = keysToMonthOptions(keys)
+      setAvailableMonths(options)
+      // If the currently-selected month isn't actually available for
+      // this student (e.g. switched to a student with less history),
+      // fall back to the most recent one that is.
+      if (options.length && !options.some((o) => o.key === selectedMonthKey)) {
+        const fallback = options[options.length - 1].key
+        setSelectedMonthKey(fallback)
+        loadMonth(fallback)
+      }
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedStudentId])
 
   const loadMonth = (monthKey) => {
     if (!selectedStudentId) return
@@ -222,7 +225,7 @@ export default function MonthlyReports() {
           <FiCalendar className="text-spark-orange" /> Download by month
         </h3>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {MONTHS.map((m) => (
+          {availableMonths.map((m) => (
             <button
               key={m.key}
               onClick={() => handleDownload(m.label, m.key)}
@@ -241,7 +244,7 @@ export default function MonthlyReports() {
           ))}
         </div>
         <p className="text-xs text-spark-ink/40 dark:text-white/40 mt-4">
-          Each month uses its own real attendance data — a month shows "No data available" until its sheet has been added.
+          Only months with real recorded data are shown here.
         </p>
       </div>
     </div>
