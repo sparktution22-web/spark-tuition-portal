@@ -335,6 +335,50 @@ export async function getLinkedStudents(email, studentId) {
   return callScript('getLinkedStudents', { email, studentId })
 }
 
+// Admin-only in the UI. Posts one homework item for a class.
+export async function createHomework({ className, subject, description, dueDate }) {
+  if (USE_MOCK) {
+    await delay()
+    return { homeworkId: 'MOCKHW1', className, subject, description, dueDate }
+  }
+  return postScript_('createHomework', { className, subject, description, dueDate })
+}
+// A student's own homework list — their class's items, each annotated
+// with whether THEY specifically have marked it done.
+export async function getHomeworkForStudent(studentId) {
+  if (USE_MOCK) {
+    await delay()
+    return []
+  }
+  return callScript('getHomeworkForStudent', { studentId })
+}
+// Admin-only in the UI. Every homework item posted for a class (no
+// per-student completion — see getHomeworkCompletion for that).
+export async function getHomeworkForClass(className) {
+  if (USE_MOCK) {
+    await delay()
+    return []
+  }
+  return callScript('getHomeworkForClass', { className })
+}
+// Student marks one homework item done or not-done.
+export async function markHomeworkDone(homeworkId, studentId, done) {
+  if (USE_MOCK) {
+    await delay()
+    return { homeworkId, studentId, done }
+  }
+  return postScript_('markHomeworkDone', { homeworkId, studentId, done })
+}
+// Admin-only in the UI. Which students in the class have/haven't
+// completed one specific homework item.
+export async function getHomeworkCompletion(homeworkId) {
+  if (USE_MOCK) {
+    await delay()
+    return []
+  }
+  return callScript('getHomeworkCompletion', { homeworkId })
+}
+
 export const isMockMode = USE_MOCK
 
 // ---- AI answer script grading ----
