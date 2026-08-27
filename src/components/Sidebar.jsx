@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import {
   FiGrid, FiCalendar, FiFileText, FiDollarSign, FiAward, FiDownload,
   FiBell, FiSettings, FiLogOut, FiUsers, FiBarChart2, FiX, FiClock,
-  FiCheckSquare, FiUpload, FiCpu, FiCamera, FiUserPlus, FiMessageCircle
+  FiCheckSquare, FiUpload, FiCpu, FiCamera, FiUserPlus, FiMessageCircle, FiBookOpen
 } from 'react-icons/fi'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import sparkLogo from '../assets/spark-logo.png'
@@ -15,6 +15,7 @@ const BASE_LINKS = [
   { to: '/app/marks', label: 'Test Marks', icon: FiAward },
   { to: '/app/submit-answer', label: 'Submit Answer Script', icon: FiUpload },
   { to: '/app/timetable', label: 'Timetable', icon: FiClock },
+  { to: '/app/homework', label: 'Homework', icon: FiBookOpen },
   { to: '/app/reports', label: 'Monthly Reports', icon: FiDownload },
   { to: '/app/notifications', label: 'Notifications', icon: FiBell },
   { to: '/app/contact-us', label: 'Contact Us', icon: FiMessageCircle }
@@ -27,6 +28,7 @@ const ADMIN_LINKS = [
   { to: '/app/admin/marks', label: 'Manage Marks', icon: FiAward },
   { to: '/app/admin/fees', label: 'Manage Fees', icon: FiDollarSign },
   { to: '/app/admin/create-account', label: 'Create Login', icon: FiUserPlus },
+  { to: '/app/admin/homework', label: 'Manage Homework', icon: FiBookOpen },
   { to: '/app/admin/tests', label: 'Manage Tests', icon: FiFileText },
   { to: '/app/admin/review-submissions', label: 'Review Submissions', icon: FiCpu },
   { to: '/app/admin/timetable', label: 'Manage Timetable', icon: FiClock },
