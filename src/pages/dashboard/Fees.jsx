@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext.jsx'
 import { useStudentContext } from '../../contexts/StudentContext.jsx'
 import { getFees, getAdminDashboard, getFeeReminders } from '../../services/api/sheetsApi.js'
 import { formatCurrency } from '../../utils/format.js'
+import { loadCached, saveCache } from '../../utils/pageCache.js'
 import StatCard from '../../components/StatCard.jsx'
 import StudentSwitcher from '../../components/StudentSwitcher.jsx'
 import FeeCollectionChart from '../../components/charts/FeeCollectionChart.jsx'
@@ -41,55 +42,124 @@ function buildReminderLink(r) {
 function FeeRemindersPanel() {
   const [reminders, setReminders] = useState([])
   const [loading, setLoading] = useState(true)
+  const [selected, setSelected] = useState(new Set())
 
   useEffect(() => {
     getFeeReminders().then((data) => {
       setReminders(data)
+      // Pre-select everyone who actually has a number on file, so
+      // "Send Selected" is useful immediately without an extra step.
+      setSelected(new Set(data.filter((r) => toWhatsAppNumber(r.parentMobile)).map((r) => r.rollNo)))
       setLoading(false)
     })
   }, [])
+
+  const toggleOne = (rollNo) => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(rollNo)) next.delete(rollNo)
+      else next.add(rollNo)
+      return next
+    })
+  }
+
+  const toggleAll = () => {
+    const sendable = reminders.filter((r) => toWhatsAppNumber(r.parentMobile)).map((r) => r.rollNo)
+    setSelected((prev) => (prev.size === sendable.length ? new Set() : new Set(sendable)))
+  }
+
+  // Opens a WhatsApp chat for every SELECTED reminder in one go — all
+  // within this same click handler (not spread across separate async
+  // steps), which is what keeps browsers from treating these as
+  // unwanted popups. Still opens one real tab per parent — WhatsApp's
+  // click-to-chat has no way to actually send multiple messages without
+  // a tap each, this just removes the need to click "Send Reminder"
+  // once per student individually.
+  const sendSelected = () => {
+    reminders
+      .filter((r) => selected.has(r.rollNo))
+      .forEach((r) => {
+        const link = buildReminderLink(r)
+        if (link) window.open(link, '_blank')
+      })
+  }
+
+  const sendableCount = reminders.filter((r) => toWhatsAppNumber(r.parentMobile)).length
 
   if (loading) return <SkeletonTable rows={3} />
 
   return (
     <div className="bg-white dark:bg-white/5 rounded-xl2 shadow-card border border-spark-ink/5 dark:border-white/10 overflow-hidden">
-      <div className="p-6 pb-4 flex items-center justify-between">
+      <div className="p-6 pb-4 flex items-center justify-between flex-wrap gap-3">
         <h3 className="font-display font-bold text-spark-ink dark:text-white flex items-center gap-2">
           <FiMessageCircle className="text-emerald-500" /> Fee Reminders
         </h3>
-        <span className="text-xs font-semibold text-spark-ink/40 dark:text-white/40">{reminders.length} pending</span>
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-semibold text-spark-ink/40 dark:text-white/40">{reminders.length} pending</span>
+          {sendableCount > 0 && (
+            <button
+              onClick={sendSelected}
+              disabled={selected.size === 0}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-emerald-500 text-white text-xs font-bold shadow-soft hover:shadow-card-hover transition-all disabled:opacity-40"
+            >
+              <FiSend size={13} /> Send Selected ({selected.size})
+            </button>
+          )}
+        </div>
       </div>
 
       {reminders.length === 0 ? (
         <p className="px-6 pb-6 text-sm text-spark-ink/50 dark:text-white/50">No pending fees this month — nothing to remind.</p>
       ) : (
-        <div className="divide-y divide-spark-ink/5 dark:divide-white/5">
-          {reminders.map((r) => {
-            const link = buildReminderLink(r)
-            return (
-              <div key={r.rollNo} className="flex items-center justify-between px-6 py-3.5">
-                <div>
-                  <p className="text-sm font-semibold text-spark-ink dark:text-white">{r.name} <span className="text-xs font-normal text-spark-ink/40 dark:text-white/40">Class {r.class} · {r.rollNo}</span></p>
-                  <p className="text-xs text-spark-ink/50 dark:text-white/50">
-                    {r.parentName || 'Parent'} · {r.parentMobile || 'No number on file'} · <span className="text-red-500 font-semibold">{formatCurrency(r.pending)} pending</span>
-                  </p>
+        <>
+          {sendableCount > 1 && (
+            <div className="px-6 pb-2">
+              <button onClick={toggleAll} className="text-xs font-semibold text-spark-orange hover:underline">
+                {selected.size === sendableCount ? 'Deselect all' : 'Select all'}
+              </button>
+              <p className="text-[11px] text-spark-ink/40 dark:text-white/40 mt-1">
+                Opens one WhatsApp chat per selected parent \u2014 your browser may ask to allow multiple tabs/popups the first time.
+              </p>
+            </div>
+          )}
+          <div className="divide-y divide-spark-ink/5 dark:divide-white/5">
+            {reminders.map((r) => {
+              const link = buildReminderLink(r)
+              return (
+                <div key={r.rollNo} className="flex items-center justify-between px-6 py-3.5 gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    {link && (
+                      <input
+                        type="checkbox"
+                        checked={selected.has(r.rollNo)}
+                        onChange={() => toggleOne(r.rollNo)}
+                        className="shrink-0 w-4 h-4 accent-spark-orange"
+                      />
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-spark-ink dark:text-white truncate">{r.name} <span className="text-xs font-normal text-spark-ink/40 dark:text-white/40">Class {r.class} · {r.rollNo}</span></p>
+                      <p className="text-xs text-spark-ink/50 dark:text-white/50 truncate">
+                        {r.parentName || 'Parent'} · {r.parentMobile || 'No number on file'} · <span className="text-red-500 font-semibold">{formatCurrency(r.pending)} pending</span>
+                      </p>
+                    </div>
+                  </div>
+                  {link ? (
+                    <a
+                      href={link}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-emerald-500 text-white text-xs font-bold shadow-soft hover:shadow-card-hover transition-all shrink-0"
+                    >
+                      <FiSend size={13} /> Send
+                    </a>
+                  ) : (
+                    <span className="text-xs text-spark-ink/30 dark:text-white/30 shrink-0">No number on file</span>
+                  )}
                 </div>
-                {link ? (
-                  <a
-                    href={link}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-emerald-500 text-white text-xs font-bold shadow-soft hover:shadow-card-hover transition-all shrink-0"
-                  >
-                    <FiSend size={13} /> Send Reminder
-                  </a>
-                ) : (
-                  <span className="text-xs text-spark-ink/30 dark:text-white/30 shrink-0">No number on file</span>
-                )}
-              </div>
-            )
+              )
           })}
-        </div>
+          </div>
+        </>
       )}
     </div>
   )
@@ -145,10 +215,18 @@ export default function Fees() {
 
   useEffect(() => {
     if (!selectedStudentId) return
-    setLoading(true)
+    const cacheKey = 'spark_cache_fees_' + selectedStudentId
+    const cached = loadCached(cacheKey)
+    if (cached) {
+      setFees(cached)
+      setLoading(false)
+    } else {
+      setLoading(true)
+    }
     getFees(selectedStudentId).then((data) => {
       setFees(data)
       setLoading(false)
+      saveCache(cacheKey, data)
     })
   }, [selectedStudentId])
 

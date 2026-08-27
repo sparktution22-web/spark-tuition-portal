@@ -3,10 +3,12 @@ import { FiAward, FiTrendingUp, FiBarChart2 } from 'react-icons/fi'
 import { useStudentContext } from '../../contexts/StudentContext.jsx'
 import { getMarks } from '../../services/api/sheetsApi.js'
 import { gradeFromPercent } from '../../services/api/mockData.js'
+import { loadCached, saveCache } from '../../utils/pageCache.js'
 import StatCard from '../../components/StatCard.jsx'
 import StudentSwitcher from '../../components/StudentSwitcher.jsx'
 import SubjectBarChart from '../../components/charts/SubjectBarChart.jsx'
 import PerformanceRadarChart from '../../components/charts/PerformanceRadarChart.jsx'
+import MarksTrendChart from '../../components/charts/MarksTrendChart.jsx'
 import { SkeletonCards, SkeletonBlock } from '../../components/Skeleton.jsx'
 import EmptyState from '../../components/EmptyState.jsx'
 
@@ -17,10 +19,18 @@ export default function TestMarks() {
 
   useEffect(() => {
     if (!selectedStudentId) return
-    setLoading(true)
+    const cacheKey = 'spark_cache_marks_' + selectedStudentId
+    const cached = loadCached(cacheKey)
+    if (cached) {
+      setMarks(cached)
+      setLoading(false)
+    } else {
+      setLoading(true)
+    }
     getMarks(selectedStudentId).then((data) => {
       setMarks(data)
       setLoading(false)
+      saveCache(cacheKey, data)
     })
   }, [selectedStudentId])
 
@@ -92,6 +102,12 @@ export default function TestMarks() {
           <h3 className="font-display font-bold text-spark-ink dark:text-white mb-4">Performance Radar</h3>
           <PerformanceRadarChart data={marks} />
         </div>
+      </div>
+
+      <div className="bg-white dark:bg-white/5 rounded-xl2 shadow-card p-6 border border-spark-ink/5 dark:border-white/10">
+        <h3 className="font-display font-bold text-spark-ink dark:text-white mb-1">Performance Over Time</h3>
+        <p className="text-xs text-spark-ink/40 dark:text-white/40 mb-4">Each line is one subject's score percentage across every test taken.</p>
+        <MarksTrendChart marks={marks} />
       </div>
 
       <div className="bg-white dark:bg-white/5 rounded-xl2 shadow-card border border-spark-ink/5 dark:border-white/10 overflow-hidden">
