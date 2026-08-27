@@ -23,12 +23,14 @@ import AdminAnalytics from './pages/admin/AdminAnalytics.jsx'
 import AdminMarks from './pages/admin/AdminMarks.jsx'
 import AdminFees from './pages/admin/AdminFees.jsx'
 import AdminCreateAccount from './pages/admin/AdminCreateAccount.jsx'
+import AdminHomework from './pages/admin/AdminHomework.jsx'
 import AdminTests from './pages/admin/AdminTests.jsx'
 import AdminReviewSubmissions from './pages/admin/AdminReviewSubmissions.jsx'
 import AdminAttendance from './pages/admin/AdminAttendance.jsx'
 import AdminScanAttendance from './pages/admin/AdminScanAttendance.jsx'
 import AdminTimetable from './pages/admin/AdminTimetable.jsx'
 import Timetable from './pages/dashboard/Timetable.jsx'
+import Homework from './pages/Homework.jsx'
 import ContactUs from './pages/ContactUs.jsx'
 import TapCheckIn from './pages/TapCheckIn.jsx'
 function App() {
@@ -75,6 +77,7 @@ function App() {
             <Route path="submit-answer" element={<SubmitAnswer />} />
             <Route path="reports" element={<MonthlyReports />} />
             <Route path="timetable" element={<Timetable />} />
+            <Route path="homework" element={<Homework />} />
             <Route path="contact-us" element={<ContactUs />} />
             <Route path="notifications" element={<Notifications />} />
             <Route path="settings" element={<Settings />} />
@@ -115,6 +118,14 @@ function App() {
               element={
                 <ProtectedRoute roles={['admin']}>
                   <AdminCreateAccount />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="admin/homework"
+              element={
+                <ProtectedRoute roles={['admin']}>
+                  <AdminHomework />
                 </ProtectedRoute>
               }
             />
