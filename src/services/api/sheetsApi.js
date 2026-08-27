@@ -59,12 +59,21 @@ export async function getFees(studentId) {
   }
   return callScript('getFees', { studentId })
 }
-export async function getMarks(studentId) {
+export async function getMarks(studentId, month) {
   if (USE_MOCK) {
     await delay()
     return generateMarks(studentId)
   }
-  return callScript('getMarks', { studentId })
+  return callScript('getMarks', { studentId, month })
+}
+// One month's AI-synthesized overall performance summary + specific
+// improvement points, based on that month's actual test results.
+export async function getMonthlyPerformanceSummary(studentId, month) {
+  if (USE_MOCK) {
+    await delay()
+    return { summary: '', improvementPoints: [] }
+  }
+  return callScript('getMonthlyPerformanceSummary', { studentId, month })
 }
 export async function getNotifications(studentId) {
   if (USE_MOCK) {
