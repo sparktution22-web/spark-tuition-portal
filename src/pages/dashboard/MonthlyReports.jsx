@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { FiDownload, FiFileText, FiCalendar } from 'react-icons/fi'
 import { motion } from 'framer-motion'
 import { useStudentContext } from '../../contexts/StudentContext.jsx'
-import { getDashboardData } from '../../services/api/sheetsApi.js'
+import { getDashboardData, getMonthlyPerformanceSummary } from '../../services/api/sheetsApi.js'
 import { generateMonthlyReportPDF } from '../../utils/pdfGenerator.js'
 import { loadCached, saveCache } from '../../utils/pageCache.js'
 import StudentSwitcher from '../../components/StudentSwitcher.jsx'
@@ -113,11 +113,23 @@ export default function MonthlyReports() {
         setMarks(fresh.marks)
         setMonthError('')
       }
+      // Overall monthly summary + improvement points — generated fresh
+      // (or from a short-lived cache) each time, based on whatever this
+      // month's actual tests were.
+      let performanceSummary = { summary: '', improvementPoints: [] }
+      try {
+        performanceSummary = await getMonthlyPerformanceSummary(selectedStudentId, monthKey)
+      } catch {
+        // If this fails for any reason, the report still generates —
+        // just without the summary section, rather than blocking the
+        // whole download over it.
+      }
       generateMonthlyReportPDF({
         student: { ...selectedStudent, ...reportInfo },
         attendance: reportAttendance,
         marks: reportMarks,
-        monthLabel
+        monthLabel,
+        performanceSummary
       })
     } catch (err) {
       setMonthError(err.message || 'No data available for this month yet.')
