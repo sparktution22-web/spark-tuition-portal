@@ -59,6 +59,16 @@ export async function getFees(studentId) {
   }
   return callScript('getFees', { studentId })
 }
+// Exact list of 'YYYY-MM' months that genuinely have data for this
+// student — used to build the Monthly Reports month picker from real
+// data instead of guessing based on today's date.
+export async function getAvailableReportMonths(studentId) {
+  if (USE_MOCK) {
+    await delay()
+    return ['2026-04', '2026-05', '2026-06', '2026-07', '2026-08']
+  }
+  return callScript('getAvailableReportMonths', { studentId })
+}
 export async function getMarks(studentId, month) {
   if (USE_MOCK) {
     await delay()
