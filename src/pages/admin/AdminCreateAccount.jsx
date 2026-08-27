@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { createUserWithEmailAndPassword, signOut } from 'firebase/auth'
-import { FiUserPlus, FiCopy, FiCheckCircle, FiAlertCircle } from 'react-icons/fi'
+import { FiUserPlus, FiCopy, FiCheckCircle, FiAlertCircle, FiUsers } from 'react-icons/fi'
 import { secondaryAuth } from '../../services/firebase/secondaryAuth.js'
-import { getStudents, flagPasswordChangeRequired } from '../../services/api/sheetsApi.js'
+import { getStudents, flagPasswordChangeRequired, linkStudentToParent } from '../../services/api/sheetsApi.js'
 
 // A short, easy-to-read-aloud-or-type temporary password — avoids
 // visually ambiguous characters (0/O, 1/l/I) since admin will be sharing
@@ -25,6 +25,14 @@ export default function AdminCreateAccount() {
   const [created, setCreated] = useState(null) // { email, password, name }
   const [copied, setCopied] = useState(false)
   const [needsReset, setNeedsReset] = useState('') // email that already has an account and needs the delete-then-recreate flow
+
+  // Separate small form for linking an additional child to an EXISTING
+  // parent login — for parents who have more than one child at SPARK.
+  const [linkEmail, setLinkEmail] = useState('')
+  const [linkStudentId, setLinkStudentId] = useState('')
+  const [linking, setLinking] = useState(false)
+  const [linkError, setLinkError] = useState('')
+  const [linkSuccess, setLinkSuccess] = useState('')
 
   useEffect(() => {
     getStudents().then(setStudents)
@@ -172,6 +180,81 @@ export default function AdminCreateAccount() {
           </button>
         </div>
       )}
+
+      <div className="bg-white dark:bg-white/5 rounded-xl2 shadow-card p-6 border border-spark-ink/5 dark:border-white/10">
+        <h3 className="font-display font-bold text-spark-ink dark:text-white mb-1 flex items-center gap-2">
+          <FiUsers className="text-spark-orange" /> Link Another Child
+        </h3>
+        <p className="text-sm text-spark-ink/50 dark:text-white/50 mb-5">
+          For a parent who already has a login and has a second child at SPARK — this lets that
+          SAME login switch between both kids, instead of needing a separate account for each.
+        </p>
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault()
+            setLinkError('')
+            setLinkSuccess('')
+            if (!linkEmail.trim() || !linkStudentId) {
+              setLinkError('Enter the parent\u2019s existing login email and choose the child to add.')
+              return
+            }
+            setLinking(true)
+            try {
+              await linkStudentToParent(linkEmail.trim(), linkStudentId)
+              const student = students.find((s) => s.id === linkStudentId)
+              setLinkSuccess(`${student?.name || linkStudentId} is now linked to ${linkEmail.trim()} — they'll see both children next time they log in.`)
+              setLinkEmail('')
+              setLinkStudentId('')
+            } catch (err) {
+              setLinkError(err.message || 'Could not link this child. Please try again.')
+            } finally {
+              setLinking(false)
+            }
+          }}
+          className="space-y-4"
+        >
+          <div>
+            <label className="text-xs font-semibold text-spark-ink/50 dark:text-white/50 mb-1.5 block">Parent's Existing Login Email</label>
+            <input
+              type="text"
+              value={linkEmail}
+              onChange={(e) => setLinkEmail(e.target.value)}
+              placeholder="e.g. spk009-parent@spark.local"
+              className="w-full px-4 py-2.5 rounded-xl border border-spark-ink/10 dark:border-white/10 dark:bg-transparent dark:text-white text-sm focus:border-spark-orange outline-none"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-spark-ink/50 dark:text-white/50 mb-1.5 block">Child to Add</label>
+            <select
+              value={linkStudentId}
+              onChange={(e) => setLinkStudentId(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl border border-spark-ink/10 dark:border-white/10 dark:bg-transparent dark:text-white text-sm focus:border-spark-orange outline-none"
+            >
+              <option value="">Choose a student...</option>
+              {students.map((s) => (
+                <option key={s.id} value={s.id}>{s.name} — {s.rollNo} (Class {s.class})</option>
+              ))}
+            </select>
+          </div>
+          {linkError && (
+            <p className="text-sm text-red-500 bg-red-50 rounded-lg px-3 py-2 flex items-start gap-2">
+              <FiAlertCircle className="shrink-0 mt-0.5" size={14} /> {linkError}
+            </p>
+          )}
+          {linkSuccess && (
+            <p className="text-sm text-emerald-600 bg-emerald-50 rounded-lg px-3 py-2 flex items-start gap-2">
+              <FiCheckCircle className="shrink-0 mt-0.5" size={14} /> {linkSuccess}
+            </p>
+          )}
+          <button
+            type="submit"
+            disabled={linking}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-full bg-white dark:bg-white/10 border-2 border-spark-orange text-spark-orange font-bold hover:bg-spark-orange hover:text-white transition-all disabled:opacity-60"
+          >
+            <FiUsers /> {linking ? 'Linking...' : 'Link Child to This Login'}
+          </button>
+        </form>
+      </div>
     </div>
   )
 }
