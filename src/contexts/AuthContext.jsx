@@ -11,6 +11,7 @@ import {
 import { auth, isFirebaseConfigured } from '../services/firebase/config.js'
 import { STUDENTS } from '../services/api/mockData.js'
 import { checkPasswordChangeRequired, clearPasswordChangeRequired } from '../services/api/sheetsApi.js'
+import { registerForPushNotifications } from '../utils/pushNotifications.js'
 const AuthContext = createContext(null)
 // Demo accounts used only in mock-auth mode (no Firebase configured).
 // Role is resolved from the student roster: parentEmail -> parent,
@@ -72,6 +73,13 @@ export function AuthProvider({ children }) {
             // someone out.
           }
           setUser({ email: fbUser.email, role, studentId, uid: fbUser.uid, mustChangePassword })
+          // Only ask for notification permission once someone's actually
+          // set their own password — asking during the forced
+          // password-change screen would be a confusing first thing to
+          // see. registerForPushNotifications no-ops safely if the
+          // browser doesn't support push or permission was already
+          // decided either way.
+          if (!mustChangePassword) registerForPushNotifications(fbUser.email)
         } else {
           setUser(null)
         }
@@ -125,6 +133,7 @@ export function AuthProvider({ children }) {
       await updatePassword(auth.currentUser, newPassword)
       await clearPasswordChangeRequired(auth.currentUser.email)
       setUser((u) => (u ? { ...u, mustChangePassword: false } : u))
+      registerForPushNotifications(auth.currentUser.email)
       return
     }
     // Mock mode — nothing to actually change, just clear the flag.
