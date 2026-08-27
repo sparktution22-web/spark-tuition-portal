@@ -56,30 +56,45 @@ export function AuthProvider({ children }) {
         // login still works, it just won't survive a browser restart
         // in that case. Not worth blocking the app over.
       })
-      const unsub = onAuthStateChanged(auth, async (fbUser) => {
+      const unsub = onAuthStateChanged(auth, (fbUser) => {
         if (fbUser) {
           const { role, studentId } = resolveRole(fbUser.email)
-          // Checked once per login — true means this account was
-          // created by admin with a temporary password and hasn't been
-          // changed yet. Self-registered accounts (Register.jsx) never
-          // get this flag, since they already chose their own password.
-          let mustChangePassword = false
-          try {
-            const result = await checkPasswordChangeRequired(fbUser.email)
-            mustChangePassword = !!result.mustChangePassword
-          } catch {
-            // If this check fails for any reason, don't block login over
-            // it — default to not forcing a change rather than locking
-            // someone out.
-          }
-          setUser({ email: fbUser.email, role, studentId, uid: fbUser.uid, mustChangePassword })
-          // Only ask for notification permission once someone's actually
-          // set their own password — asking during the forced
-          // password-change screen would be a confusing first thing to
-          // see. registerForPushNotifications no-ops safely if the
-          // browser doesn't support push or permission was already
-          // decided either way.
-          if (!mustChangePassword) registerForPushNotifications(fbUser.email)
+          // Set the user IMMEDIATELY — this used to `await` the password-
+          // change check before calling setUser, which meant login itself
+          // was blocked on a round-trip to Apps Script. Apps Script can
+          // genuinely take many seconds under load, and during that wait
+          // `user` stayed null — long enough that a page's own logic
+          // could conclude "not logged in" and bounce back to the login
+          // screen, even though Firebase Auth itself had already
+          // succeeded. That's what caused needing to log in twice: the
+          // second attempt usually finished faster once things were
+          // already warmed up. Defaulting mustChangePassword to false
+          // here and correcting it a moment later (see below) avoids
+          // blocking on that check entirely.
+          setUser({ email: fbUser.email, role, studentId, uid: fbUser.uid, mustChangePassword: false })
+
+          // Checked once per login — true means this account was created
+          // by admin with a temporary password and hasn't been changed
+          // yet. Runs AFTER login is already considered successful, not
+          // before — if it comes back true, RequirePasswordChange (which
+          // watches user.mustChangePassword) redirects at that point.
+          checkPasswordChangeRequired(fbUser.email)
+            .then((result) => {
+              if (result.mustChangePassword) {
+                setUser((u) => (u ? { ...u, mustChangePassword: true } : u))
+              } else {
+                // Only ask for notification permission once someone's
+                // confirmed NOT stuck on a temporary password — asking
+                // during the forced password-change screen would be a
+                // confusing first thing to see.
+                registerForPushNotifications(fbUser.email)
+              }
+            })
+            .catch(() => {
+              // If this check fails for any reason, don't block or break
+              // login over it — mustChangePassword already defaulted to
+              // false above, which is the safe fallback.
+            })
         } else {
           setUser(null)
         }
