@@ -316,6 +316,25 @@ export async function clearPasswordChangeRequired(email) {
   return postScript_('clearPasswordChangeRequired', { email })
 }
 
+// Admin-only in the UI. Links an additional student to an existing
+// parent login's email, so that login can switch between siblings.
+export async function linkStudentToParent(email, studentId) {
+  if (USE_MOCK) {
+    await delay()
+    return { email, studentId, linked: true }
+  }
+  return postScript_('linkStudentToParent', { email, studentId })
+}
+// Every student a given login's email can see — for a parent with
+// linked siblings, all of them; for everyone else, just their own.
+export async function getLinkedStudents(email, studentId) {
+  if (USE_MOCK) {
+    await delay()
+    return []
+  }
+  return callScript('getLinkedStudents', { email, studentId })
+}
+
 export const isMockMode = USE_MOCK
 
 // ---- AI answer script grading ----
