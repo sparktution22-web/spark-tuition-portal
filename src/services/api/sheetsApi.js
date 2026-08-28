@@ -408,22 +408,15 @@ export async function logLogin(email, role, studentId) {
   }
   return postScript_('logLogin', { email, role, studentId })
 }
-// Admin-only in the UI. Raw chronological feed of the most recent logins.
-export async function getLoginActivity() {
+// Admin-only in the UI. Returns { summary, activity } together in one
+// round-trip — combines what used to be two separate calls that each
+// independently re-read the whole login log from scratch.
+export async function getLoginActivityData() {
   if (USE_MOCK) {
     await delay()
-    return []
+    return { summary: [], activity: [] }
   }
-  return callScript('getLoginActivity')
-}
-// Admin-only in the UI. One row per student — their parent's and their
-// own last login time, or null if that role has never logged in yet.
-export async function getLoginSummary() {
-  if (USE_MOCK) {
-    await delay()
-    return []
-  }
-  return callScript('getLoginSummary')
+  return callScript('getLoginActivityData')
 }
 
 export const isMockMode = USE_MOCK
