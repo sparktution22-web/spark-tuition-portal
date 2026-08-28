@@ -10,7 +10,7 @@ import {
 } from 'firebase/auth'
 import { auth, isFirebaseConfigured } from '../services/firebase/config.js'
 import { STUDENTS } from '../services/api/mockData.js'
-import { checkPasswordChangeRequired, clearPasswordChangeRequired } from '../services/api/sheetsApi.js'
+import { checkPasswordChangeRequired, clearPasswordChangeRequired, logLogin } from '../services/api/sheetsApi.js'
 import { registerForPushNotifications } from '../utils/pushNotifications.js'
 const AuthContext = createContext(null)
 // Demo accounts used only in mock-auth mode (no Firebase configured).
@@ -72,6 +72,13 @@ export function AuthProvider({ children }) {
           // here and correcting it a moment later (see below) avoids
           // blocking on that check entirely.
           setUser({ email: fbUser.email, role, studentId, uid: fbUser.uid, mustChangePassword: false })
+
+          // Records this login for the admin's Login Activity page —
+          // deliberately fire-and-forget, never awaited, so a slow or
+          // failed logging call can never delay or block someone
+          // actually getting into the app (same lesson as the race
+          // condition fixed above).
+          logLogin(fbUser.email, role, studentId).catch(() => {})
 
           // Checked once per login — true means this account was created
           // by admin with a temporary password and hasn't been changed
