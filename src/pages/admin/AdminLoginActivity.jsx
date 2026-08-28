@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { FiActivity, FiCheckCircle, FiXCircle, FiClock } from 'react-icons/fi'
-import { getLoginSummary, getLoginActivity } from '../../services/api/sheetsApi.js'
+import { getLoginActivityData } from '../../services/api/sheetsApi.js'
 import { loadCached, saveCache } from '../../utils/pageCache.js'
 import { SkeletonTable } from '../../components/Skeleton.jsx'
 
@@ -11,18 +11,18 @@ export default function AdminLoginActivity() {
   const [tab, setTab] = useState('summary') // 'summary' | 'activity'
 
   useEffect(() => {
-    const cached = loadCached('spark_cache_login_summary')
-    const cachedActivity = loadCached('spark_cache_login_activity')
-    if (cached) setSummary(cached)
-    if (cachedActivity) setActivity(cachedActivity)
-    if (cached || cachedActivity) setLoading(false)
-
-    Promise.all([getLoginSummary(), getLoginActivity()]).then(([s, a]) => {
-      setSummary(s)
-      setActivity(a)
+    const cached = loadCached('spark_cache_login_activity_data')
+    if (cached) {
+      setSummary(cached.summary)
+      setActivity(cached.activity)
       setLoading(false)
-      saveCache('spark_cache_login_summary', s)
-      saveCache('spark_cache_login_activity', a)
+    }
+
+    getLoginActivityData().then((data) => {
+      setSummary(data.summary)
+      setActivity(data.activity)
+      setLoading(false)
+      saveCache('spark_cache_login_activity_data', data)
     })
   }, [])
 
