@@ -399,6 +399,33 @@ export async function savePushToken(email, token) {
   return postScript_('savePushToken', { email, token })
 }
 
+// Records one successful login — call this right after a real login
+// resolves, not on every page load.
+export async function logLogin(email, role, studentId) {
+  if (USE_MOCK) {
+    await delay()
+    return { logged: true }
+  }
+  return postScript_('logLogin', { email, role, studentId })
+}
+// Admin-only in the UI. Raw chronological feed of the most recent logins.
+export async function getLoginActivity() {
+  if (USE_MOCK) {
+    await delay()
+    return []
+  }
+  return callScript('getLoginActivity')
+}
+// Admin-only in the UI. One row per student — their parent's and their
+// own last login time, or null if that role has never logged in yet.
+export async function getLoginSummary() {
+  if (USE_MOCK) {
+    await delay()
+    return []
+  }
+  return callScript('getLoginSummary')
+}
+
 export const isMockMode = USE_MOCK
 
 // ---- AI answer script grading ----
