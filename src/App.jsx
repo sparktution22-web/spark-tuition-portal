@@ -26,6 +26,7 @@ import AdminMarks from './pages/admin/AdminMarks.jsx'
 import AdminFees from './pages/admin/AdminFees.jsx'
 import AdminCreateAccount from './pages/admin/AdminCreateAccount.jsx'
 import AdminHomework from './pages/admin/AdminHomework.jsx'
+import AdminLoginActivity from './pages/admin/AdminLoginActivity.jsx'
 import AdminTests from './pages/admin/AdminTests.jsx'
 import AdminReviewSubmissions from './pages/admin/AdminReviewSubmissions.jsx'
 import AdminAttendance from './pages/admin/AdminAttendance.jsx'
@@ -135,6 +136,14 @@ function App() {
               element={
                 <ProtectedRoute roles={['admin']}>
                   <AdminHomework />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="admin/login-activity"
+              element={
+                <ProtectedRoute roles={['admin']}>
+                  <AdminLoginActivity />
                 </ProtectedRoute>
               }
             />
