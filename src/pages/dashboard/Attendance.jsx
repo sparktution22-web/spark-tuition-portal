@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext.jsx'
 import { useStudentContext } from '../../contexts/StudentContext.jsx'
 import { getAttendance, getAdminDashboard } from '../../services/api/sheetsApi.js'
 import { summarizeAttendance } from '../../utils/format.js'
+import { loadCached, saveCache } from '../../utils/pageCache.js'
 import StatCard from '../../components/StatCard.jsx'
 import StudentSwitcher from '../../components/StudentSwitcher.jsx'
 import { SkeletonCards, SkeletonTable } from '../../components/Skeleton.jsx'
@@ -13,15 +14,13 @@ import { FiCalendar, FiCheckCircle, FiXCircle, FiClock } from 'react-icons/fi'
 const STATUS_STYLES = {
   Present: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10',
   Absent: 'bg-red-50 text-red-500 dark:bg-red-500/10',
-  Holiday: 'bg-blue-50 text-blue-500 dark:bg-blue-500/10',
   Late: 'bg-amber-50 text-amber-600 dark:bg-amber-500/10'
 }
 
 const HEAT_COLOR = {
   Present: 'bg-spark-orange',
   Late: 'bg-spark-accent',
-  Absent: 'bg-red-300',
-  Holiday: 'bg-spark-ink/10 dark:bg-white/10'
+  Absent: 'bg-red-300'
 }
 
 // Admin-only — consolidated centre-wide Today / This Week / This Month
@@ -84,10 +83,18 @@ export default function Attendance() {
 
   useEffect(() => {
     if (!selectedStudentId) return
-    setLoading(true)
+    const cacheKey = 'spark_cache_attendance_' + selectedStudentId
+    const cached = loadCached(cacheKey)
+    if (cached) {
+      setRecords(cached)
+      setLoading(false)
+    } else {
+      setLoading(true)
+    }
     getAttendance(selectedStudentId).then((data) => {
       setRecords(data)
       setLoading(false)
+      saveCache(cacheKey, data)
     })
   }, [selectedStudentId])
 
@@ -139,10 +146,9 @@ export default function Attendance() {
         </button>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard icon={FiCheckCircle} label="Present" value={summary.present} tone="green" />
         <StatCard icon={FiXCircle} label="Absent" value={summary.absent} tone="red" />
-        <StatCard icon={FiCalendar} label="Holiday" value={summary.holiday} tone="blue" />
         <StatCard icon={FiClock} label="Late" value={summary.late} tone="orange" />
         <StatCard icon={FiCheckCircle} label="Attendance %" value={summary.pct} suffix="%" tone="orange" />
       </div>
@@ -163,7 +169,6 @@ export default function Attendance() {
           <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-spark-orange inline-block" /> Present</span>
           <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-spark-accent inline-block" /> Late</span>
           <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-red-300 inline-block" /> Absent</span>
-          <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-spark-ink/10 dark:bg-white/10 inline-block" /> Holiday</span>
         </div>
       </div>
 
@@ -184,7 +189,7 @@ export default function Attendance() {
             onChange={(e) => setStatusFilter(e.target.value)}
             className="px-4 py-2.5 rounded-xl border border-spark-ink/10 dark:border-white/10 dark:bg-transparent dark:text-white text-sm font-semibold focus:border-spark-orange outline-none"
           >
-            {['All', 'Present', 'Absent', 'Holiday', 'Late'].map((s) => (
+            {['All', 'Present', 'Absent', 'Late'].map((s) => (
               <option key={s} value={s}>{s}</option>
             ))}
           </select>
