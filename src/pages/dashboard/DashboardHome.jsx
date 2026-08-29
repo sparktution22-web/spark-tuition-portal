@@ -116,9 +116,10 @@ function AddEventForm({ students, onAdded, onClose }) {
   )
 }
 
-function AddAnnouncementForm({ onAdded, onClose }) {
+function AddAnnouncementForm({ onAdded, onClose, classOptions = [] }) {
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
+  const [className, setClassName] = useState('') // blank = everyone
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -131,9 +132,10 @@ function AddAnnouncementForm({ onAdded, onClose }) {
     }
     setSaving(true)
     try {
-      await addAnnouncement({ title: title.trim(), body: body.trim() })
+      await addAnnouncement({ title: title.trim(), body: body.trim(), className })
       setTitle('')
       setBody('')
+      setClassName('')
       onAdded()
     } catch (err) {
       setError(err.message || 'Could not add announcement.')
@@ -157,6 +159,19 @@ function AddAnnouncementForm({ onAdded, onClose }) {
         rows={3}
         className="w-full px-3 py-2 rounded-lg border border-spark-ink/10 dark:border-white/10 dark:bg-transparent dark:text-white text-sm focus:border-spark-orange outline-none resize-none"
       />
+      <div>
+        <label className="text-xs font-semibold text-spark-ink/50 dark:text-white/50 mb-1 block">Send to</label>
+        <select
+          value={className}
+          onChange={(e) => setClassName(e.target.value)}
+          className="w-full px-3 py-2 rounded-lg border border-spark-ink/10 dark:border-white/10 dark:bg-transparent dark:text-white text-sm focus:border-spark-orange outline-none"
+        >
+          <option value="">Everyone (all classes)</option>
+          {classOptions.map((c) => (
+            <option key={c} value={c}>Class {c} only</option>
+          ))}
+        </select>
+      </div>
       {error && <p className="text-xs text-red-500">{error}</p>}
       <div className="flex gap-2">
         <button
@@ -199,18 +214,24 @@ export default function DashboardHome() {
 
   // Announcements are visible to every role, so — like the calendar —
   // they load independently of the admin-vs-parent/student data effect.
+  // Admin sees every announcement, centre-wide; a parent/student only
+  // sees their own class's announcements plus any centre-wide ones
+  // (blank class = everyone) — re-fetches whenever the selected student
+  // changes, since a different child could be in a different class.
   const loadAnnouncements = () => {
-    const cached = loadCached('spark_cache_announcements')
+    const cacheKey = isAdmin ? 'spark_cache_announcements_all' : 'spark_cache_announcements_' + (selectedStudent?.class || 'none')
+    const cached = loadCached(cacheKey)
     if (cached) setAnnouncements(cached)
-    getAnnouncements().then((data) => {
+    getAnnouncements(isAdmin ? null : selectedStudent?.class).then((data) => {
       setAnnouncements(data)
-      saveCache('spark_cache_announcements', data)
+      saveCache(cacheKey, data)
     })
   }
 
   useEffect(() => {
     loadAnnouncements()
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin, selectedStudent?.class])
 
   // Calendar is visible to every role, so it loads independently of the
   // admin-vs-parent/student data effect below — and refetches whenever
@@ -467,6 +488,7 @@ export default function DashboardHome() {
           </div>
           {isAdmin && showAddAnnouncement && (
             <AddAnnouncementForm
+              classOptions={[...new Set(students.map((s) => s.class).filter(Boolean))]}
               onClose={() => setShowAddAnnouncement(false)}
               onAdded={() => {
                 setShowAddAnnouncement(false)
