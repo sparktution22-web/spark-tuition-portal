@@ -71,11 +71,22 @@ export function generateMonthlyReportPDF({ student, attendance, marks, monthLabe
   )
 
   const summary = summarizeAttendance(attendance)
-  const plannedTotal = student.totalClasses || summary.total
+  // Deliberately uses the SAME real, computed total (present + absent)
+  // that the summary table below is built from — not a separately
+  // admin-entered "planned total for the month" figure, which could
+  // easily disagree with the actual recorded data (e.g. if it was never
+  // updated to reflect an actual holiday, or the month isn't finished
+  // yet). Showing two different numbers that were never guaranteed to
+  // reconcile was exactly what confused parents into thinking "No
+  // Class" days were being silently folded into "Absent" — they never
+  // were (see summarizeAttendance in format.js: Holiday and Absent are
+  // always kept strictly separate), the two totals just didn't match up
+  // visually. Using one single source of truth for both numbers fixes
+  // that at the root.
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(9)
   doc.setTextColor(...BRAND_ORANGE)
-  doc.text(`Total Classes: ${plannedTotal}   \u00b7   Attendance: ${summary.pct}%`, pageWidth - margin, y, { align: 'right' })
+  doc.text(`Classes So Far: ${summary.total}   \u00b7   Attendance: ${summary.pct}%`, pageWidth - margin, y, { align: 'right' })
 
   y += 34
 
@@ -114,6 +125,11 @@ export function generateMonthlyReportPDF({ student, attendance, marks, monthLabe
     columnStyles: { 0: { fontStyle: 'bold' } }
   })
   const summaryEndY = doc.lastAutoTable.finalY
+
+  doc.setFont('helvetica', 'italic')
+  doc.setFontSize(7.5)
+  doc.setTextColor(...MUTED)
+  doc.text('Holiday days are not counted toward attendance \u2014 only Present and Absent make up the total above.', margin, summaryEndY + 12)
 
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(11)
