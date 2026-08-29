@@ -116,7 +116,6 @@ export function generateMonthlyReportPDF({ student, attendance, marks, monthLabe
     body: [
       ['Present', summary.present],
       ['Absent', summary.absent],
-      ['Holiday', summary.holiday],
       ['Late', summary.late],
       ['Attendance %', `${summary.pct}%`]
     ],
@@ -129,7 +128,7 @@ export function generateMonthlyReportPDF({ student, attendance, marks, monthLabe
   doc.setFont('helvetica', 'italic')
   doc.setFontSize(7.5)
   doc.setTextColor(...MUTED)
-  doc.text('Holiday days are not counted toward attendance \u2014 only Present and Absent make up the total above.', margin, summaryEndY + 12)
+  doc.text('"No Class" days are excluded entirely and never counted toward attendance \u2014 only Present and Absent make up the total above.', margin, summaryEndY + 12)
 
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(11)
