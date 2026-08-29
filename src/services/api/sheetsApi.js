@@ -160,12 +160,12 @@ export async function addEvent({ type, date, title, studentId }) {
   }
   return postScript_('addEvent', { type, date, title, studentId })
 }
-export async function getAnnouncements() {
+export async function getAnnouncements(className) {
   if (USE_MOCK) {
     await delay()
     return ANNOUNCEMENTS
   }
-  return callScript('getAnnouncements')
+  return callScript('getAnnouncements', { className })
 }
 // Combines attendance + fees + marks + notifications + announcements into
 // ONE request instead of five, since Apps Script tends to serialize
@@ -292,12 +292,12 @@ export async function updateFeeStatus({ studentId, collected, month, paidOn }) {
   return postScript_('updateFeeStatus', { studentId, collected, month, paidOn })
 }
 // Admin-only in the UI.
-export async function addAnnouncement({ title, body, date }) {
+export async function addAnnouncement({ title, body, date, className }) {
   if (USE_MOCK) {
     await delay()
-    return { added: true, title, body }
+    return { added: true, title, body, className }
   }
-  return postScript_('addAnnouncement', { title, body, date })
+  return postScript_('addAnnouncement', { title, body, date, className })
 }
 // Admin-only in the UI. Flags an email as needing to change its
 // (temporary) password before it can be used normally.
@@ -417,6 +417,57 @@ export async function getLoginActivityData() {
     return { summary: [], activity: [] }
   }
   return callScript('getLoginActivityData')
+}
+
+// Admin-only in the UI. Uploads one study material PDF for a class.
+export async function createStudyMaterial({ className, subject, title, fileBase64 }) {
+  if (USE_MOCK) {
+    await delay()
+    return { materialId: 'MOCKM1', className, subject, title }
+  }
+  return postScript_('createStudyMaterial', { className, subject, title, fileBase64 })
+}
+// Every study material for a given class (or all, if omitted — the
+// admin's own management view).
+export async function getStudyMaterialsForClass(className) {
+  if (USE_MOCK) {
+    await delay()
+    return []
+  }
+  return callScript('getStudyMaterialsForClass', { className })
+}
+// Student submits one doubt/question.
+export async function submitDoubt({ studentId, subject, question }) {
+  if (USE_MOCK) {
+    await delay()
+    return { doubtId: 'MOCKD1', status: 'Pending' }
+  }
+  return postScript_('submitDoubt', { studentId, subject, question })
+}
+// A student's own doubts — pending and answered.
+export async function getDoubtsForStudent(studentId) {
+  if (USE_MOCK) {
+    await delay()
+    return []
+  }
+  return callScript('getDoubtsForStudent', { studentId })
+}
+// Admin-only in the UI. Every pending (unanswered) doubt.
+export async function getPendingDoubts() {
+  if (USE_MOCK) {
+    await delay()
+    return []
+  }
+  return callScript('getPendingDoubts')
+}
+// Admin-only in the UI. Answers one doubt — notifies the student once
+// answered.
+export async function answerDoubt(doubtId, answer) {
+  if (USE_MOCK) {
+    await delay()
+    return { doubtId, answered: true }
+  }
+  return postScript_('answerDoubt', { doubtId, answer })
 }
 
 export const isMockMode = USE_MOCK
