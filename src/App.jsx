@@ -26,6 +26,8 @@ import AdminMarks from './pages/admin/AdminMarks.jsx'
 import AdminFees from './pages/admin/AdminFees.jsx'
 import AdminCreateAccount from './pages/admin/AdminCreateAccount.jsx'
 import AdminHomework from './pages/admin/AdminHomework.jsx'
+import AdminStudyMaterials from './pages/admin/AdminStudyMaterials.jsx'
+import AdminDoubtBox from './pages/admin/AdminDoubtBox.jsx'
 import AdminLoginActivity from './pages/admin/AdminLoginActivity.jsx'
 import AdminTests from './pages/admin/AdminTests.jsx'
 import AdminReviewSubmissions from './pages/admin/AdminReviewSubmissions.jsx'
@@ -34,6 +36,8 @@ import AdminScanAttendance from './pages/admin/AdminScanAttendance.jsx'
 import AdminTimetable from './pages/admin/AdminTimetable.jsx'
 import Timetable from './pages/dashboard/Timetable.jsx'
 import Homework from './pages/Homework.jsx'
+import StudyMaterials from './pages/StudyMaterials.jsx'
+import DoubtBox from './pages/DoubtBox.jsx'
 import ContactUs from './pages/ContactUs.jsx'
 import TapCheckIn from './pages/TapCheckIn.jsx'
 function App() {
@@ -88,6 +92,8 @@ function App() {
             <Route path="reports" element={<MonthlyReports />} />
             <Route path="timetable" element={<Timetable />} />
             <Route path="homework" element={<Homework />} />
+            <Route path="study-materials" element={<StudyMaterials />} />
+            <Route path="doubt-box" element={<DoubtBox />} />
             <Route path="contact-us" element={<ContactUs />} />
             <Route path="notifications" element={<Notifications />} />
             <Route path="settings" element={<Settings />} />
@@ -136,6 +142,22 @@ function App() {
               element={
                 <ProtectedRoute roles={['admin']}>
                   <AdminHomework />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="admin/study-materials"
+              element={
+                <ProtectedRoute roles={['admin']}>
+                  <AdminStudyMaterials />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="admin/doubt-box"
+              element={
+                <ProtectedRoute roles={['admin']}>
+                  <AdminDoubtBox />
                 </ProtectedRoute>
               }
             />
