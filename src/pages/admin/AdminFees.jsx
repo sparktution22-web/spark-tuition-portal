@@ -12,6 +12,21 @@ function monthKeyToLabel(key) {
   return `${MONTH_NAMES[Number(m) - 1]} ${y}`
 }
 
+// The backend stores dates as 'dd.MM.yyyy' throughout the app, but an
+// HTML date input needs 'yyyy-MM-dd' — these convert between the two.
+function ddmmyyyyToInputDate(str) {
+  if (!str) return ''
+  const parts = str.split('.')
+  if (parts.length !== 3) return ''
+  return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`
+}
+function inputDateToDdmmyyyy(str) {
+  if (!str) return ''
+  const parts = str.split('-')
+  if (parts.length !== 3) return ''
+  return `${parts[2]}.${parts[1]}.${parts[0]}`
+}
+
 // The month right after the most recent one that already has a Fees
 // tab — this is what "Create Next Month" actually creates, so admin
 // never has to type a month manually.
@@ -31,6 +46,8 @@ export default function AdminFees() {
   const [record, setRecord] = useState(null)
   const [loadingRecord, setLoadingRecord] = useState(false)
   const [collected, setCollected] = useState('')
+  const [paidOn, setPaidOn] = useState('')
+  const [remarks, setRemarks] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -77,6 +94,8 @@ export default function AdminFees() {
       .then((data) => {
         setRecord(data)
         setCollected(String(data.collected))
+        setPaidOn(ddmmyyyyToInputDate(data.paidOn))
+        setRemarks(data.remarks || '')
       })
       .catch((err) => {
         setRecord(null)
@@ -127,7 +146,13 @@ export default function AdminFees() {
     }
     setSaving(true)
     try {
-      const result = await updateFeeStatus({ studentId: selectedId, collected: amount, month: selectedMonth || undefined })
+      const result = await updateFeeStatus({
+        studentId: selectedId,
+        collected: amount,
+        month: selectedMonth || undefined,
+        paidOn: inputDateToDdmmyyyy(paidOn) || undefined,
+        remarks: remarks
+      })
       setSuccess(`Saved — ${selectedStudent?.name} is now marked ${result.status}.`)
       loadRecord(selectedId, selectedMonth)
     } catch (err) {
@@ -233,6 +258,11 @@ export default function AdminFees() {
             </span>
             {record.paidOn && <span className="text-xs text-spark-ink/40 dark:text-white/40">Paid on {record.paidOn}</span>}
           </div>
+          {record.remarks && (
+            <p className="text-xs text-spark-ink/50 dark:text-white/50 bg-spark-surface dark:bg-white/5 rounded-lg px-3 py-2 mb-4">
+              <span className="font-semibold">Remarks: </span>{record.remarks}
+            </p>
+          )}
 
           <form onSubmit={submit} className="space-y-4">
             <div>
@@ -247,6 +277,28 @@ export default function AdminFees() {
               <p className="text-xs text-spark-ink/40 dark:text-white/40 mt-1.5">
                 Status updates automatically — Paid once the collected amount reaches the total.
               </p>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-spark-ink/50 dark:text-white/50 mb-1.5 block">Paid On</label>
+              <input
+                type="date"
+                value={paidOn}
+                onChange={(e) => setPaidOn(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-xl border border-spark-ink/10 dark:border-white/10 dark:bg-transparent dark:text-white text-sm focus:border-spark-orange outline-none"
+              />
+              <p className="text-xs text-spark-ink/40 dark:text-white/40 mt-1.5">
+                Leave blank to use today's date automatically once fully paid \u2014 set this if the payment actually happened on a different day.
+              </p>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-spark-ink/50 dark:text-white/50 mb-1.5 block">Remarks</label>
+              <textarea
+                value={remarks}
+                onChange={(e) => setRemarks(e.target.value)}
+                rows={2}
+                placeholder="e.g. Paid via UPI, partial payment, discount applied..."
+                className="w-full px-4 py-2.5 rounded-xl border border-spark-ink/10 dark:border-white/10 dark:bg-transparent dark:text-white text-sm focus:border-spark-orange outline-none resize-none"
+              />
             </div>
             {error && <p className="text-sm text-red-500 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
             {success && <p className="text-sm text-emerald-600 bg-emerald-50 rounded-lg px-3 py-2">{success}</p>}
