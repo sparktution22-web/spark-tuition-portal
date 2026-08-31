@@ -1,9 +1,28 @@
 import { useEffect, useState } from 'react'
-import { FiDollarSign, FiCheckCircle, FiClock } from 'react-icons/fi'
-import { getStudents, getFeeRecord, updateFeeStatus } from '../../services/api/sheetsApi.js'
+import { FiDollarSign, FiCheckCircle, FiClock, FiPlusCircle, FiCalendar } from 'react-icons/fi'
+import { getStudents, getFeeRecord, updateFeeStatus, getFeeMonths, createFeeMonth } from '../../services/api/sheetsApi.js'
 import { formatCurrency } from '../../utils/format.js'
 import { SkeletonTable } from '../../components/Skeleton.jsx'
 import { loadCached, saveCache } from '../../utils/pageCache.js'
+
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+
+function monthKeyToLabel(key) {
+  const [y, m] = key.split('-')
+  return `${MONTH_NAMES[Number(m) - 1]} ${y}`
+}
+
+// The month right after the most recent one that already has a Fees
+// tab — this is what "Create Next Month" actually creates, so admin
+// never has to type a month manually.
+function nextMonthKey(months) {
+  if (months.length === 0) return null
+  const latest = months[months.length - 1] // already sorted ascending
+  const [y, m] = latest.split('-').map(Number)
+  const nextM = m === 12 ? 1 : m + 1
+  const nextY = m === 12 ? y + 1 : y
+  return `${nextY}-${String(nextM).padStart(2, '0')}`
+}
 
 export default function AdminFees() {
   const [students, setStudents] = useState([])
@@ -17,6 +36,13 @@ export default function AdminFees() {
   const [success, setSuccess] = useState('')
   const [recordError, setRecordError] = useState('')
 
+  const [months, setMonths] = useState([])
+  const [selectedMonth, setSelectedMonth] = useState('')
+  const [loadingMonths, setLoadingMonths] = useState(true)
+  const [creatingMonth, setCreatingMonth] = useState(false)
+  const [createError, setCreateError] = useState('')
+  const [createSuccess, setCreateSuccess] = useState('')
+
   useEffect(() => {
     const cached = loadCached('spark_cache_admin_students')
     if (cached) {
@@ -28,15 +54,26 @@ export default function AdminFees() {
       setLoadingStudents(false)
       saveCache('spark_cache_admin_students', list)
     })
+
+    loadMonths()
   }, [])
 
-  const loadRecord = (studentId) => {
+  const loadMonths = () => {
+    setLoadingMonths(true)
+    getFeeMonths().then((list) => {
+      setMonths(list)
+      setSelectedMonth((prev) => prev || list[list.length - 1] || '')
+      setLoadingMonths(false)
+    })
+  }
+
+  const loadRecord = (studentId, month) => {
     if (!studentId) return
     setLoadingRecord(true)
     setRecordError('')
     setError('')
     setSuccess('')
-    getFeeRecord(studentId)
+    getFeeRecord(studentId, month || undefined)
       .then((data) => {
         setRecord(data)
         setCollected(String(data.collected))
@@ -51,7 +88,30 @@ export default function AdminFees() {
   const onSelectStudent = (e) => {
     const id = e.target.value
     setSelectedId(id)
-    loadRecord(id)
+    loadRecord(id, selectedMonth)
+  }
+
+  const onSelectMonth = (e) => {
+    const month = e.target.value
+    setSelectedMonth(month)
+    if (selectedId) loadRecord(selectedId, month)
+  }
+
+  const handleCreateNextMonth = async () => {
+    const monthKey = nextMonthKey(months)
+    if (!monthKey) return
+    setCreateError('')
+    setCreateSuccess('')
+    setCreatingMonth(true)
+    try {
+      await createFeeMonth(monthKey)
+      setCreateSuccess(`${monthKeyToLabel(monthKey)} is ready \u2014 everyone carried forward as Pending.`)
+      loadMonths()
+    } catch (err) {
+      setCreateError(err.message || 'Could not create the new month. Please try again.')
+    } finally {
+      setCreatingMonth(false)
+    }
   }
 
   const selectedStudent = students.find((s) => s.id === selectedId)
@@ -67,9 +127,9 @@ export default function AdminFees() {
     }
     setSaving(true)
     try {
-      const result = await updateFeeStatus({ studentId: selectedId, collected: amount })
+      const result = await updateFeeStatus({ studentId: selectedId, collected: amount, month: selectedMonth || undefined })
       setSuccess(`Saved — ${selectedStudent?.name} is now marked ${result.status}.`)
-      loadRecord(selectedId)
+      loadRecord(selectedId, selectedMonth)
     } catch (err) {
       setError(err.message || 'Could not save. Please try again.')
     } finally {
@@ -79,24 +139,66 @@ export default function AdminFees() {
 
   if (loadingStudents) return <SkeletonTable rows={4} />
 
+  const nextKey = nextMonthKey(months)
+
   return (
     <div className="space-y-5">
-      <div className="max-w-sm">
-        <label className="text-xs font-semibold text-spark-ink/50 dark:text-white/50 mb-1.5 block">Select Student</label>
-        <select
-          value={selectedId}
-          onChange={onSelectStudent}
-          className="w-full px-4 py-2.5 rounded-xl border border-spark-ink/10 dark:border-white/10 dark:bg-transparent dark:text-white text-sm focus:border-spark-orange outline-none"
-        >
-          <option value="">Choose a student...</option>
-          {students.map((s) => (
-            <option key={s.id} value={s.id}>{s.name} — {s.rollNo} (Class {s.class})</option>
-          ))}
-        </select>
+      <div className="bg-white dark:bg-white/5 rounded-xl2 shadow-card p-5 border border-spark-ink/5 dark:border-white/10 flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h3 className="font-display font-bold text-spark-ink dark:text-white mb-1 flex items-center gap-2">
+            <FiCalendar className="text-spark-orange" /> Fee Months
+          </h3>
+          <p className="text-xs text-spark-ink/50 dark:text-white/50">
+            {nextKey ? `Next: ${monthKeyToLabel(nextKey)} hasn't been set up yet.` : 'No fee months found yet.'}
+          </p>
+        </div>
+        {nextKey && (
+          <button
+            onClick={handleCreateNextMonth}
+            disabled={creatingMonth}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-spark-gradient text-white text-sm font-bold shadow-soft hover:shadow-card-hover transition-all disabled:opacity-60 shrink-0"
+          >
+            <FiPlusCircle /> {creatingMonth ? 'Creating...' : `Create ${monthKeyToLabel(nextKey)}`}
+          </button>
+        )}
+      </div>
+      {createError && <p className="text-sm text-red-500 bg-red-50 rounded-lg px-3 py-2">{createError}</p>}
+      {createSuccess && <p className="text-sm text-emerald-600 bg-emerald-50 rounded-lg px-3 py-2">{createSuccess}</p>}
+
+      <div className="flex flex-wrap gap-4">
+        <div className="max-w-sm flex-1 min-w-[200px]">
+          <label className="text-xs font-semibold text-spark-ink/50 dark:text-white/50 mb-1.5 block">Month</label>
+          {loadingMonths ? (
+            <div className="h-11 rounded-xl bg-spark-surface dark:bg-white/5 animate-pulse" />
+          ) : (
+            <select
+              value={selectedMonth}
+              onChange={onSelectMonth}
+              className="w-full px-4 py-2.5 rounded-xl border border-spark-ink/10 dark:border-white/10 dark:bg-transparent dark:text-white text-sm focus:border-spark-orange outline-none"
+            >
+              {months.map((m) => (
+                <option key={m} value={m}>{monthKeyToLabel(m)}</option>
+              ))}
+            </select>
+          )}
+        </div>
+        <div className="max-w-sm flex-1 min-w-[200px]">
+          <label className="text-xs font-semibold text-spark-ink/50 dark:text-white/50 mb-1.5 block">Select Student</label>
+          <select
+            value={selectedId}
+            onChange={onSelectStudent}
+            className="w-full px-4 py-2.5 rounded-xl border border-spark-ink/10 dark:border-white/10 dark:bg-transparent dark:text-white text-sm focus:border-spark-orange outline-none"
+          >
+            <option value="">Choose a student...</option>
+            {students.map((s) => (
+              <option key={s.id} value={s.id}>{s.name} — {s.rollNo} (Class {s.class})</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {!selectedId ? (
-        <p className="text-sm text-spark-ink/50 dark:text-white/50">Choose a student above to view and update their fee status for this month.</p>
+        <p className="text-sm text-spark-ink/50 dark:text-white/50">Choose a student above to view and update their fee status for the selected month.</p>
       ) : loadingRecord ? (
         <SkeletonTable rows={3} />
       ) : recordError ? (
