@@ -470,6 +470,35 @@ export async function answerDoubt(doubtId, answer) {
   return postScript_('answerDoubt', { doubtId, answer })
 }
 
+// Everything needed for the Full Year Record — attendance across every
+// available month, all marks ever recorded, and full fee history.
+export async function getYearlyReport(studentId) {
+  if (USE_MOCK) {
+    await delay()
+    return { info: {}, attendance: [], marks: [], fees: [] }
+  }
+  return callScript('getYearlyReport', { studentId })
+}
+
+// Admin-only in the UI. Every month that has a real Fees tab right now.
+export async function getFeeMonths() {
+  if (USE_MOCK) {
+    await delay()
+    return ['2026-08']
+  }
+  return callScript('getFeeMonths')
+}
+// Admin-only in the UI. Creates a new month's Fees tab automatically —
+// duplicates the most recent existing one, carrying the roster and fee
+// amounts forward, and resets everyone to Pending for the new month.
+export async function createFeeMonth(monthKey) {
+  if (USE_MOCK) {
+    await delay()
+    return { monthKey, created: true }
+  }
+  return postScript_('createFeeMonth', { monthKey })
+}
+
 export const isMockMode = USE_MOCK
 
 // ---- AI answer script grading ----
