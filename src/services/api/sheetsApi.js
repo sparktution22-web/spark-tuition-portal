@@ -284,12 +284,12 @@ export async function getFeeRecord(studentId, month) {
 // Admin-only in the UI. { studentId, collected, month?, paidOn? } —
 // writes directly into the same Collected/Status/Paid On cells manual
 // editing would use. Status is derived automatically server-side.
-export async function updateFeeStatus({ studentId, collected, month, paidOn }) {
+export async function updateFeeStatus({ studentId, collected, month, paidOn, remarks }) {
   if (USE_MOCK) {
     await delay()
     return { studentId, collected, status: 'Paid' }
   }
-  return postScript_('updateFeeStatus', { studentId, collected, month, paidOn })
+  return postScript_('updateFeeStatus', { studentId, collected, month, paidOn, remarks })
 }
 // Admin-only in the UI.
 export async function addAnnouncement({ title, body, date, className }) {
