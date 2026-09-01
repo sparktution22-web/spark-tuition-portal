@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { FiPlus, FiTrash2, FiClock, FiEdit2, FiCheck, FiX } from 'react-icons/fi'
+import { FiPlus, FiTrash2, FiClock, FiEdit2, FiCheck, FiX, FiVideo } from 'react-icons/fi'
 import { getStudents, getTimetable, addTimetableEntry, updateTimetableEntry, deleteTimetableEntry } from '../../services/api/sheetsApi.js'
 import { SkeletonTable } from '../../components/Skeleton.jsx'
 import EmptyState from '../../components/EmptyState.jsx'
@@ -12,13 +12,14 @@ function EditSlotRow({ entry, onSaved, onCancel }) {
   const [day, setDay] = useState(entry.day)
   const [time, setTime] = useState(entry.time)
   const [subject, setSubject] = useState(entry.subject)
+  const [meetingLink, setMeetingLink] = useState(entry.meetingLink || '')
   const [saving, setSaving] = useState(false)
 
   const save = async () => {
     if (!time.trim() || !subject.trim()) return
     setSaving(true)
     try {
-      await updateTimetableEntry({ id: entry.id, day, time: time.trim(), subject: subject.trim() })
+      await updateTimetableEntry({ id: entry.id, day, time: time.trim(), subject: subject.trim(), meetingLink: meetingLink.trim() })
       onSaved()
     } finally {
       setSaving(false)
@@ -46,6 +47,12 @@ function EditSlotRow({ entry, onSaved, onCancel }) {
         value={subject}
         onChange={(e) => setSubject(e.target.value)}
         placeholder="Subject"
+        className="w-full px-2.5 py-1.5 rounded-lg border border-spark-ink/10 dark:border-white/10 dark:bg-transparent dark:text-white text-xs focus:border-spark-orange outline-none"
+      />
+      <input
+        value={meetingLink}
+        onChange={(e) => setMeetingLink(e.target.value)}
+        placeholder="Google Meet link (optional, for online classes)"
         className="w-full px-2.5 py-1.5 rounded-lg border border-spark-ink/10 dark:border-white/10 dark:bg-transparent dark:text-white text-xs focus:border-spark-orange outline-none"
       />
       <div className="flex gap-2">
@@ -113,8 +120,8 @@ export default function AdminTimetable() {
     setError('')
     setSaving(true)
     try {
-      await addTimetableEntry({ studentId: selectedId, day: data.day, time: data.time, subject: data.subject })
-      reset({ day: data.day, time: '', subject: '' })
+      await addTimetableEntry({ studentId: selectedId, day: data.day, time: data.time, subject: data.subject, meetingLink: data.meetingLink })
+      reset({ day: data.day, time: '', subject: '', meetingLink: '' })
       loadEntries()
     } catch (err) {
       setError(err.message || 'Could not add this slot. Please try again.')
@@ -188,6 +195,14 @@ export default function AdminTimetable() {
                 />
                 {errors.subject && <p className="text-xs text-red-500 mt-1">Subject is required</p>}
               </div>
+              <div>
+                <label className="text-xs font-semibold text-spark-ink/50 dark:text-white/50 mb-1.5 block">Google Meet Link <span className="font-normal text-spark-ink/30 dark:text-white/30">(optional, for online classes)</span></label>
+                <input
+                  {...register('meetingLink')}
+                  placeholder="https://meet.google.com/..."
+                  className="w-full px-4 py-2.5 rounded-xl border border-spark-ink/10 dark:border-white/10 dark:bg-transparent dark:text-white text-sm focus:border-spark-orange outline-none"
+                />
+              </div>
               {error && <p className="text-sm text-red-500 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
               <button
                 type="submit"
@@ -222,7 +237,10 @@ export default function AdminTimetable() {
                         ) : (
                           <div key={e.id} className="flex items-center justify-between bg-spark-surface dark:bg-white/5 rounded-lg px-3 py-2">
                             <div>
-                              <p className="text-sm font-semibold text-spark-ink dark:text-white">{e.subject}</p>
+                              <p className="text-sm font-semibold text-spark-ink dark:text-white flex items-center gap-1.5">
+                                {e.subject}
+                                {e.meetingLink && <FiVideo className="text-emerald-500" size={13} title="Online class" />}
+                              </p>
                               <p className="text-xs text-spark-ink/50 dark:text-white/50">{e.time}</p>
                             </div>
                             <div className="flex items-center gap-1">
