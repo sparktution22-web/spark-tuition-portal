@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import {
   FiGrid, FiCalendar, FiFileText, FiDollarSign, FiAward, FiDownload,
   FiBell, FiSettings, FiLogOut, FiUsers, FiBarChart2, FiX, FiClock,
-  FiCheckSquare, FiUpload, FiCpu, FiCamera, FiUserPlus, FiMessageCircle, FiBookOpen, FiActivity, FiBook, FiHelpCircle
+  FiCheckSquare, FiUpload, FiCpu, FiCamera, FiUserPlus, FiMessageCircle, FiBookOpen, FiActivity, FiBook, FiHelpCircle, FiVideo
 } from 'react-icons/fi'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import sparkLogo from '../assets/spark-logo.png'
@@ -31,6 +31,7 @@ const ADMIN_LINKS = [
   { to: '/app/admin/fees', label: 'Manage Fees', icon: FiDollarSign },
   { to: '/app/admin/create-account', label: 'Create Login', icon: FiUserPlus },
   { to: '/app/admin/homework', label: 'Manage Homework', icon: FiBookOpen },
+  { to: '/app/admin/online-classes', label: 'Online Classes', icon: FiVideo },
   { to: '/app/admin/study-materials', label: 'Study Materials', icon: FiBook },
   { to: '/app/admin/doubt-box', label: 'Doubt Box', icon: FiHelpCircle },
   { to: '/app/admin/login-activity', label: 'Login Activity', icon: FiActivity },
