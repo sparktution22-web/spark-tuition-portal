@@ -499,6 +499,18 @@ export async function createFeeMonth(monthKey) {
   return postScript_('createFeeMonth', { monthKey })
 }
 
+// Admin-only in the UI. Saves an already-generated report PDF (as
+// base64) to Drive, fires an in-app + push notification, and returns
+// the parent's contact info + a shareable view link for building a
+// WhatsApp message.
+export async function shareMonthlyReport(studentId, monthLabel, pdfBase64) {
+  if (USE_MOCK) {
+    await delay()
+    return { fileId: 'MOCKF1', viewUrl: '#', studentName: 'Student', parentName: '', parentMobile: '' }
+  }
+  return postScript_('shareMonthlyReport', { studentId, monthLabel, pdfBase64 })
+}
+
 export const isMockMode = USE_MOCK
 
 // ---- AI answer script grading ----
@@ -509,7 +521,13 @@ export function fileToBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => resolve(reader.result.split(',')[1])
-    reader.onerror = reject
+    // Reject with a real Error, not the raw ProgressEvent FileReader
+    // passes to onerror — that event has no .message property at all,
+    // which meant any read failure showed up everywhere as a generic
+    // "could not upload" fallback text with no way to tell what
+    // actually went wrong (file too large, unreadable, permissions,
+    // etc.).
+    reader.onerror = () => reject(new Error('Could not read the selected file — it may be too large, corrupted, or an unsupported type.'))
     reader.readAsDataURL(file)
   })
 }
