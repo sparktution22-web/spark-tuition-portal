@@ -237,24 +237,6 @@ export function generateMonthlyReportPDF({ student, attendance, marks, monthLabe
 
   y += 70
 
-  // --- Simple QR placeholder mark ---
-  const qrSize = 46
-  const qrX = pageWidth - margin - qrSize
-  doc.setDrawColor(...INK)
-  const cell = qrSize / 6
-  const pattern = [1, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 0, 1]
-  pattern.forEach((v, i) => {
-    if (!v) return
-    const row = Math.floor(i / 6)
-    const col = i % 6
-    doc.setFillColor(...INK)
-    doc.rect(qrX + col * cell, y + row * cell, cell, cell, 'F')
-  })
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(7)
-  doc.setTextColor(...MUTED)
-  doc.text('Scan to verify', qrX + qrSize / 2, y + qrSize + 10, { align: 'center' })
-
   // --- Signatures ---
   doc.setDrawColor(180, 180, 180)
   doc.line(margin, y + 45, margin + 160, y + 45)
@@ -271,6 +253,12 @@ export function generateMonthlyReportPDF({ student, attendance, marks, monthLabe
   doc.setFontSize(7.5)
   doc.setTextColor(...MUTED)
   doc.text(
+    'sparktution22@gmail.com  \u00b7  Instagram: @spark.v_s1102',
+    pageWidth / 2,
+    pageHeight - 34,
+    { align: 'center' }
+  )
+  doc.text(
     `Generated on ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}  \u00b7  SPARK Tuition Management Portal`,
     pageWidth / 2,
     pageHeight - 24,
@@ -278,4 +266,191 @@ export function generateMonthlyReportPDF({ student, attendance, marks, monthLabe
   )
 
   doc.save(`SPARK_Report_${studentName.replace(/\s+/g, '_')}_${monthLabel.replace(/\s+/g, '_')}.pdf`)
+}
+
+// Groups a combined multi-month attendance array by month (from each
+// entry's 'dd.MM.yyyy' date), returning one summary row per month in
+// chronological order — this is what turns potentially 100+ individual
+// day rows into a compact, genuinely readable breakdown, since a full
+// year's worth of individual days would otherwise sprawl across many
+// pages without being any more useful than the summary itself.
+function summarizeByMonth(attendance) {
+  const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+  const groups = {}
+  attendance.forEach((r) => {
+    const parts = r.date.split('.') // dd.MM.yyyy
+    if (parts.length !== 3) return
+    const key = parts[2] + '-' + parts[1] // 'yyyy-MM', sorts correctly as a string
+    if (!groups[key]) groups[key] = []
+    groups[key].push(r)
+  })
+  return Object.keys(groups)
+    .sort()
+    .map((key) => {
+      const [y, m] = key.split('-')
+      const summary = summarizeAttendance(groups[key])
+      return {
+        label: `${MONTH_NAMES[Number(m) - 1]} ${y}`,
+        present: summary.present,
+        absent: summary.absent,
+        total: summary.total,
+        pct: summary.pct,
+      }
+    })
+}
+
+/**
+ * Generates a Full Year Record PDF — a cumulative document covering
+ * every available month at once, rather than one month at a time.
+ * Shows a month-by-month attendance breakdown (not a full day-by-day
+ * listing, which would sprawl across many pages for a whole year), all
+ * marks ever recorded, and a full fee summary. Useful for school
+ * transfers or a parent's own complete record, distinct from the
+ * month-specific Monthly Report.
+ */
+export function generateYearlyReportPDF({ student, attendance, marks, fees }) {
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' })
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const margin = 40
+  let y = 40
+
+  const studentName = student?.name || 'Student'
+
+  // --- Header ---
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(18)
+  doc.setTextColor(...BRAND_ORANGE)
+  doc.text('SPARK', margin, y)
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(9)
+  doc.setTextColor(...MUTED)
+  doc.text('Educate \u00b7 Empower \u00b7 Enrich', margin, y + 14)
+
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(13)
+  doc.setTextColor(...INK)
+  doc.text('Full Year Record', pageWidth - margin, y, { align: 'right' })
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(9)
+  doc.setTextColor(...MUTED)
+  doc.text('Cumulative \u00b7 All Available Months', pageWidth - margin, y + 14, { align: 'right' })
+
+  y += 40
+  doc.setDrawColor(230, 230, 230)
+  doc.line(margin, y, pageWidth - margin, y)
+  y += 24
+
+  // --- Student info ---
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(11)
+  doc.setTextColor(...INK)
+  doc.text(studentName, margin, y)
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(9)
+  doc.setTextColor(...MUTED)
+  doc.text(`Class ${student?.class || '\u2014'}  \u00b7  Roll No. ${student?.rollNo || '\u2014'}`, margin, y + 14)
+
+  const overallSummary = summarizeAttendance(attendance)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(9)
+  doc.setTextColor(...BRAND_ORANGE)
+  doc.text(`Classes So Far: ${overallSummary.total}   \u00b7   Overall Attendance: ${overallSummary.pct}%`, pageWidth - margin, y, { align: 'right' })
+
+  y += 32
+
+  // --- Month-by-month attendance breakdown ---
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(11)
+  doc.setTextColor(...INK)
+  doc.text('Attendance by Month', margin, y)
+  const monthly = summarizeByMonth(attendance)
+  if (monthly.length === 0) {
+    doc.setFont('helvetica', 'italic')
+    doc.setFontSize(9)
+    doc.setTextColor(...MUTED)
+    doc.text('No attendance recorded yet.', margin, y + 22)
+    y += 40
+  } else {
+    autoTable(doc, {
+      startY: y + 8,
+      margin: { left: margin },
+      head: [['Month', 'Present', 'Absent', 'Total', 'Attendance %']],
+      body: monthly.map((m) => [m.label, m.present, m.absent, m.total, `${m.pct}%`]),
+      styles: { fontSize: 9, cellPadding: 5, textColor: INK },
+      headStyles: { fillColor: BRAND_ORANGE, textColor: [255, 255, 255], fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [255, 248, 242] },
+      theme: 'grid'
+    })
+    y = doc.lastAutoTable.finalY + 12
+    doc.setFont('helvetica', 'italic')
+    doc.setFontSize(7.5)
+    doc.setTextColor(...MUTED)
+    doc.text('"No Class" days are excluded entirely and never counted toward attendance.', margin, y)
+    y += 28
+  }
+
+  // --- All marks ---
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(11)
+  doc.setTextColor(...INK)
+  doc.text('All Test Marks', margin, y)
+  if (marks.length === 0) {
+    doc.setFont('helvetica', 'italic')
+    doc.setFontSize(9)
+    doc.setTextColor(...MUTED)
+    doc.text('No test marks recorded yet.', margin, y + 22)
+    y += 40
+  } else {
+    autoTable(doc, {
+      startY: y + 8,
+      margin: { left: margin },
+      head: [['Date', 'Subject', 'Test Name', 'Score', 'Grade']],
+      body: marks.map((m) => [m.date, m.subject, m.testName || '\u2014', `${m.score}/${m.max}`, gradeFromPercent(Math.round((m.score / m.max) * 100))]),
+      styles: { fontSize: 8.5, cellPadding: 4, textColor: INK },
+      headStyles: { fillColor: BRAND_ORANGE, textColor: [255, 255, 255], fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [255, 248, 242] },
+      theme: 'grid'
+    })
+    y = doc.lastAutoTable.finalY + 28
+  }
+
+  // --- Fee summary ---
+  if (fees && fees.length > 0) {
+    const totalBilled = fees.reduce((s, f) => s + (Number(f.amountPayable) || 0), 0)
+    const totalCollected = fees.reduce((s, f) => s + (Number(f.paid) || 0), 0)
+    const totalPending = totalBilled - totalCollected
+
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(11)
+    doc.setTextColor(...INK)
+    doc.text('Fee Summary', margin, y)
+    autoTable(doc, {
+      startY: y + 8,
+      margin: { left: margin },
+      tableWidth: 250,
+      body: [
+        ['Total Billed (All Months)', `\u20b9${totalBilled.toLocaleString('en-IN')}`],
+        ['Total Collected', `\u20b9${totalCollected.toLocaleString('en-IN')}`],
+        ['Pending', `\u20b9${totalPending.toLocaleString('en-IN')}`]
+      ],
+      styles: { fontSize: 9, cellPadding: 5, textColor: INK },
+      theme: 'plain',
+      columnStyles: { 0: { fontStyle: 'bold' } }
+    })
+    y = doc.lastAutoTable.finalY + 20
+  }
+
+  // --- Footer ---
+  const pageHeight = doc.internal.pageSize.getHeight()
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(7.5)
+  doc.setTextColor(...MUTED)
+  doc.text(
+    `Generated on ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}  \u00b7  SPARK Tuition Management Portal`,
+    pageWidth / 2,
+    pageHeight - 24,
+    { align: 'center' }
+  )
+
+  doc.save(`SPARK_FullYearRecord_${studentName.replace(/\s+/g, '_')}.pdf`)
 }
