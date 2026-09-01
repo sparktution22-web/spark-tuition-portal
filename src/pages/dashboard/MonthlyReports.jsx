@@ -1,14 +1,26 @@
 import { useEffect, useState } from 'react'
-import { FiDownload, FiFileText, FiCalendar } from 'react-icons/fi'
+import { FiDownload, FiFileText, FiCalendar, FiSend } from 'react-icons/fi'
 import { motion } from 'framer-motion'
 import { useStudentContext } from '../../contexts/StudentContext.jsx'
-import { getDashboardData, getMonthlyPerformanceSummary, getAvailableReportMonths } from '../../services/api/sheetsApi.js'
-import { generateMonthlyReportPDF } from '../../utils/pdfGenerator.js'
+import { getDashboardData, getMonthlyPerformanceSummary, getAvailableReportMonths, getYearlyReport, shareMonthlyReport } from '../../services/api/sheetsApi.js'
+import { generateMonthlyReportPDF, generateYearlyReportPDF } from '../../utils/pdfGenerator.js'
 import { loadCached, saveCache } from '../../utils/pageCache.js'
 import StudentSwitcher from '../../components/StudentSwitcher.jsx'
 import { SkeletonBlock } from '../../components/Skeleton.jsx'
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+
+// Same phone-number formatting already used for fee reminders — turns
+// a stored parent number into the digits-only, country-code-prefixed
+// format wa.me needs. Assumes India (+91).
+function toWhatsAppNumber(raw) {
+  const digits = String(raw || '').replace(/\D/g, '')
+  if (!digits) return null
+  if (digits.length === 10) return '91' + digits
+  if (digits.length === 11 && digits.startsWith('0')) return '91' + digits.slice(1)
+  if (digits.length === 12 && digits.startsWith('91')) return digits
+  return digits
+}
 
 // Builds display labels from real 'YYYY-MM' keys returned by the
 // backend (getAvailableReportMonths) — this list reflects exactly which
@@ -141,14 +153,91 @@ export default function MonthlyReports() {
     }
   }
 
-  // Present/Absent counts + a real percentage, same logic as the
-  // Dashboard — Holiday days and not-yet-happened days are excluded.
+  const [sendingMonth, setSendingMonth] = useState('')
+
+  const handleSendToParent = async (monthLabel, monthKey) => {
+    if (!selectedStudent) return
+    setSendingMonth(monthKey)
+    setMonthError('')
+    try {
+      // Same "make sure data is fresh" logic as handleDownload.
+      let reportInfo = info
+      let reportAttendance = attendance
+      let reportMarks = marks
+      if (monthKey !== selectedMonthKey || monthError) {
+        const fresh = await getDashboardData(selectedStudentId, monthKey)
+        reportInfo = fresh.info
+        reportAttendance = fresh.attendance
+        reportMarks = fresh.marks
+        setSelectedMonthKey(monthKey)
+        setInfo(fresh.info)
+        setAttendance(fresh.attendance)
+        setMarks(fresh.marks)
+      }
+      let performanceSummary = { summary: '', improvementPoints: [] }
+      try {
+        performanceSummary = await getMonthlyPerformanceSummary(selectedStudentId, monthKey)
+      } catch {
+        // fine without it, same as handleDownload
+      }
+
+      // skipSave: true — this is for sending, not for a local download.
+      const doc = generateMonthlyReportPDF({
+        student: { ...selectedStudent, ...reportInfo },
+        attendance: reportAttendance,
+        marks: reportMarks,
+        monthLabel,
+        performanceSummary,
+        skipSave: true
+      })
+      const pdfBase64 = doc.output('datauristring').split(',')[1]
+
+      const result = await shareMonthlyReport(selectedStudentId, monthLabel, pdfBase64)
+      const number = toWhatsAppNumber(result.parentMobile)
+      if (!number) {
+        setMonthError('Report was saved and the family was notified in-app, but no parent phone number is on file to send a WhatsApp message.')
+        return
+      }
+      const greeting = result.parentName ? `Dear ${result.parentName} (Parent of ${result.studentName})` : `Dear Parent of ${result.studentName}`
+      const message = `${greeting}, here is ${result.studentName}'s Monthly Report for ${monthLabel} from SPARK Tuition Centre: ${result.viewUrl}`
+      window.open(`https://wa.me/${number}?text=${encodeURIComponent(message)}`, '_blank')
+    } catch (err) {
+      setMonthError(err.message || 'Could not send the report. Please try again.')
+    } finally {
+      setSendingMonth('')
+    }
+  }
+
+  const handleYearlyDownload = async () => {
+    if (!selectedStudent) return
+    setGenerating(true)
+    try {
+      const yearly = await getYearlyReport(selectedStudentId)
+      generateYearlyReportPDF({
+        student: { ...selectedStudent, ...yearly.info },
+        attendance: yearly.attendance,
+        marks: yearly.marks,
+        fees: yearly.fees
+      })
+    } catch (err) {
+      setMonthError(err.message || 'Could not generate the full year record. Please try again.')
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  // Present/Absent counts + a real percentage. "No Class" days are
+  // excluded entirely, same as an unrecorded future day — never shown
+  // as a separate "Holiday" category (see Attendance.jsx/pdfGenerator.js
+  // for the same fix). totalClasses always uses the real computed total
+  // rather than a separately-entered planned figure, which could easily
+  // disagree with it and cause exactly the kind of "numbers don't
+  // reconcile" confusion this page should never produce.
   const presentCount = attendance.filter((r) => r.status === 'Present').length
   const absentCount = attendance.filter((r) => r.status === 'Absent').length
-  const holidayCount = attendance.filter((r) => r.status === 'Holiday').length
   const consideredCount = presentCount + absentCount
   const attendancePct = consideredCount ? Math.round((presentCount / consideredCount) * 100) : 0
-  const totalClasses = info?.totalClasses || (presentCount + absentCount + holidayCount)
+  const totalClasses = consideredCount
 
   if (loading) return <SkeletonBlock className="h-80" />
 
@@ -198,11 +287,10 @@ export default function MonthlyReports() {
               </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-3 mb-6">
+            <div className="grid grid-cols-3 gap-3 mb-6">
               {[
                 { label: 'Present', value: presentCount },
                 { label: 'Absent', value: absentCount },
-                { label: 'Holiday', value: holidayCount },
                 { label: 'Attendance %', value: `${attendancePct}%` }
               ].map((s) => (
                 <div key={s.label} className="bg-spark-peach/50 dark:bg-white/5 rounded-xl p-3 text-center">
@@ -219,31 +307,62 @@ export default function MonthlyReports() {
         )}
       </motion.div>
 
+      {/* Full year record */}
+      <div className="bg-white dark:bg-white/5 rounded-xl2 shadow-card border border-spark-ink/5 dark:border-white/10 p-6 flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h3 className="font-display font-bold text-spark-ink dark:text-white mb-1">Full Year Record</h3>
+          <p className="text-xs text-spark-ink/50 dark:text-white/50">One document covering every available month \u2014 attendance by month, all marks, and full fee history. Useful for school transfers or a complete personal record.</p>
+        </div>
+        <button
+          onClick={handleYearlyDownload}
+          disabled={generating}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-spark-gradient text-white text-sm font-bold shadow-soft hover:shadow-card-hover transition-all disabled:opacity-60 shrink-0"
+        >
+          <FiDownload /> {generating ? 'Generating...' : 'Download Full Year'}
+        </button>
+      </div>
+
       {/* Month picker */}
       <div className="bg-white dark:bg-white/5 rounded-xl2 shadow-card border border-spark-ink/5 dark:border-white/10 p-6">
         <h3 className="font-display font-bold text-spark-ink dark:text-white mb-4 flex items-center gap-2">
           <FiCalendar className="text-spark-orange" /> Download by month
         </h3>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {availableMonths.map((m) => (
-            <button
+            <div
               key={m.key}
-              onClick={() => handleDownload(m.label, m.key)}
-              disabled={generating}
-              className={`flex items-center justify-between gap-2 px-4 py-3.5 rounded-xl border transition-all text-sm font-semibold ${
+              className={`rounded-xl border p-3.5 ${
                 m.key === selectedMonthKey
-                  ? 'bg-spark-gradient text-white border-transparent shadow-soft hover:shadow-card-hover'
-                  : 'border-spark-ink/10 dark:border-white/10 text-spark-ink dark:text-white hover:border-spark-orange hover:text-spark-orange'
-              } disabled:opacity-60`}
+                  ? 'border-spark-orange bg-spark-surface dark:bg-white/5'
+                  : 'border-spark-ink/10 dark:border-white/10'
+              }`}
             >
-              <span className="flex items-center gap-2">
-                <FiFileText className={m.key === selectedMonthKey ? 'text-white' : 'text-spark-orange'} /> {m.label}
-              </span>
-              <FiDownload />
-            </button>
+              <p className="flex items-center gap-2 text-sm font-semibold text-spark-ink dark:text-white mb-2.5">
+                <FiFileText className="text-spark-orange shrink-0" /> {m.label}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleDownload(m.label, m.key)}
+                  disabled={generating || sendingMonth === m.key}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-spark-gradient text-white text-xs font-bold shadow-soft hover:shadow-card-hover transition-all disabled:opacity-60"
+                >
+                  <FiDownload size={13} /> Download
+                </button>
+                <button
+                  onClick={() => handleSendToParent(m.label, m.key)}
+                  disabled={generating || sendingMonth === m.key}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-500 text-white text-xs font-bold shadow-soft hover:shadow-card-hover transition-all disabled:opacity-60"
+                >
+                  <FiSend size={13} /> {sendingMonth === m.key ? 'Sending...' : 'Send to Parent'}
+                </button>
+              </div>
+            </div>
           ))}
         </div>
         <p className="text-xs text-spark-ink/40 dark:text-white/40 mt-4">
+          "Send to Parent" saves the report, notifies the family in-app, and opens WhatsApp with a link to it \u2014 only sends after you tap Send in WhatsApp yourself.
+        </p>
+        <p className="text-xs text-spark-ink/40 dark:text-white/40 mt-1">
           Only months with real recorded data are shown here.
         </p>
       </div>
