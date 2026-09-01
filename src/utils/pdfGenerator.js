@@ -12,7 +12,7 @@ const MUTED = [120, 120, 120]
  * download. Matches the spec: header/branding, student info, day-wise
  * attendance table, summary, subject marks, remarks, and signature lines.
  */
-export function generateMonthlyReportPDF({ student, attendance, marks, monthLabel = 'August 2026', performanceSummary }) {
+export function generateMonthlyReportPDF({ student, attendance, marks, monthLabel = 'August 2026', performanceSummary, skipSave = false }) {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' })
   const pageWidth = doc.internal.pageSize.getWidth()
   const margin = 40
@@ -86,7 +86,7 @@ export function generateMonthlyReportPDF({ student, attendance, marks, monthLabe
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(9)
   doc.setTextColor(...BRAND_ORANGE)
-  doc.text(`Classes So Far: ${summary.total}   \u00b7   Attendance: ${summary.pct}%`, pageWidth - margin, y, { align: 'right' })
+  doc.text(`Total Classes: ${summary.total}   \u00b7   Attendance: ${summary.pct}%`, pageWidth - margin, y, { align: 'right' })
 
   y += 34
 
@@ -249,23 +249,31 @@ export function generateMonthlyReportPDF({ student, attendance, marks, monthLabe
 
   // --- Footer ---
   const pageHeight = doc.internal.pageSize.getHeight()
+  const footerBoxY = pageHeight - 46
+  const footerBoxHeight = 22
+
+  doc.setDrawColor(...BRAND_ORANGE)
+  doc.setLineWidth(1)
+  doc.roundedRect(margin, footerBoxY, pageWidth - margin * 2, footerBoxHeight, 4, 4)
+
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(8.5)
+  doc.setTextColor(...BRAND_ORANGE)
+  doc.text('sparktution22@gmail.com', margin + 14, footerBoxY + footerBoxHeight / 2 + 3, { align: 'left' })
+  doc.text('Instagram: @spark.v_s1102', pageWidth - margin - 14, footerBoxY + footerBoxHeight / 2 + 3, { align: 'right' })
+
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(7.5)
   doc.setTextColor(...MUTED)
   doc.text(
-    'sparktution22@gmail.com  \u00b7  Instagram: @spark.v_s1102',
-    pageWidth / 2,
-    pageHeight - 34,
-    { align: 'center' }
-  )
-  doc.text(
     `Generated on ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}  \u00b7  SPARK Tuition Management Portal`,
     pageWidth / 2,
-    pageHeight - 24,
+    pageHeight - 12,
     { align: 'center' }
   )
 
-  doc.save(`SPARK_Report_${studentName.replace(/\s+/g, '_')}_${monthLabel.replace(/\s+/g, '_')}.pdf`)
+  if (!skipSave) doc.save(`SPARK_Report_${studentName.replace(/\s+/g, '_')}_${monthLabel.replace(/\s+/g, '_')}.pdf`)
+  return doc
 }
 
 // Groups a combined multi-month attendance array by month (from each
@@ -354,7 +362,7 @@ export function generateYearlyReportPDF({ student, attendance, marks, fees }) {
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(9)
   doc.setTextColor(...BRAND_ORANGE)
-  doc.text(`Classes So Far: ${overallSummary.total}   \u00b7   Overall Attendance: ${overallSummary.pct}%`, pageWidth - margin, y, { align: 'right' })
+  doc.text(`Total Classes: ${overallSummary.total}   \u00b7   Overall Attendance: ${overallSummary.pct}%`, pageWidth - margin, y, { align: 'right' })
 
   y += 32
 
