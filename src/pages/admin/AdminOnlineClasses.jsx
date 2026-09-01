@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { FiVideo, FiCopy, FiExternalLink, FiClock } from 'react-icons/fi'
 import { getOnlineClasses } from '../../services/api/sheetsApi.js'
+import { loadCached, saveCache } from '../../utils/pageCache.js'
 import { SkeletonTable } from '../../components/Skeleton.jsx'
 import EmptyState from '../../components/EmptyState.jsx'
 
@@ -22,9 +23,15 @@ export default function AdminOnlineClasses() {
   const [copiedId, setCopiedId] = useState(null)
 
   useEffect(() => {
+    const cached = loadCached('spark_cache_online_classes')
+    if (cached) {
+      setClasses(cached)
+      setLoading(false)
+    }
     getOnlineClasses().then((data) => {
       setClasses(data)
       setLoading(false)
+      saveCache('spark_cache_online_classes', data)
     })
   }, [])
 
