@@ -248,19 +248,31 @@ export function generateMonthlyReportPDF({ student, attendance, marks, monthLabe
   doc.text('Student Signature', margin + 200, y + 57)
 
   // --- Footer ---
+  // A single centered line (rather than splitting two different-length
+  // strings left/right, which looked unbalanced) inside a light
+  // orange-tinted box with a matching border — a cleaner, more
+  // deliberate "branded info strip" look than a plain outlined rectangle.
   const pageHeight = doc.internal.pageSize.getHeight()
-  const footerBoxY = pageHeight - 46
-  const footerBoxHeight = 22
+  const footerBoxHeight = 24
+  const footerBoxY = pageHeight - 48
 
+  doc.setFillColor(255, 241, 230) // light orange tint, matches the brand color family
   doc.setDrawColor(...BRAND_ORANGE)
-  doc.setLineWidth(1)
-  doc.roundedRect(margin, footerBoxY, pageWidth - margin * 2, footerBoxHeight, 4, 4)
+  doc.setLineWidth(0.75)
+  doc.roundedRect(margin, footerBoxY, pageWidth - margin * 2, footerBoxHeight, 5, 5, 'FD') // fill + draw
 
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(8.5)
+  doc.setFontSize(9)
   doc.setTextColor(...BRAND_ORANGE)
-  doc.text('sparktution22@gmail.com', margin + 14, footerBoxY + footerBoxHeight / 2 + 3, { align: 'left' })
-  doc.text('Instagram: @spark.v_s1102', pageWidth - margin - 14, footerBoxY + footerBoxHeight / 2 + 3, { align: 'right' })
+  // jsPDF's y-coordinate is the text baseline, not its vertical center —
+  // nudging down by ~35% of the font size lands the visual center of the
+  // text in the middle of the box, rather than sitting noticeably high.
+  doc.text(
+    'sparktution22@gmail.com   \u2022   Instagram: @spark.v_s1102',
+    pageWidth / 2,
+    footerBoxY + footerBoxHeight / 2 + 3.2,
+    { align: 'center' }
+  )
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(7.5)
