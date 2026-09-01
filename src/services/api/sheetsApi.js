@@ -604,13 +604,23 @@ export async function getTimetable(studentId) {
   }
   return callScript('getTimetable', { studentId })
 }
-// Admin-only in the UI. { studentId, day, time, subject }.
-export async function addTimetableEntry({ studentId, day, time, subject }) {
+// Admin-only in the UI. Every timetable entry across the whole roster
+// that has a meeting link set — the dedicated "who's online" view.
+export async function getOnlineClasses() {
   if (USE_MOCK) {
     await delay()
-    return { added: true, studentId, day, time, subject }
+    return []
   }
-  return postScript_('addTimetableEntry', { studentId, day, time, subject })
+  return callScript('getOnlineClasses')
+}
+// Admin-only in the UI. { studentId, day, time, subject, meetingLink }
+// — meetingLink is optional, leave blank for an in-person slot.
+export async function addTimetableEntry({ studentId, day, time, subject, meetingLink }) {
+  if (USE_MOCK) {
+    await delay()
+    return { added: true, studentId, day, time, subject, meetingLink }
+  }
+  return postScript_('addTimetableEntry', { studentId, day, time, subject, meetingLink })
 }
 // Admin-only in the UI. id is the row id returned by getTimetable.
 export async function deleteTimetableEntry(id) {
@@ -621,10 +631,10 @@ export async function deleteTimetableEntry(id) {
   return postScript_('deleteTimetableEntry', { id })
 }
 // Admin-only in the UI. Edits an existing slot in place.
-export async function updateTimetableEntry({ id, day, time, subject }) {
+export async function updateTimetableEntry({ id, day, time, subject, meetingLink }) {
   if (USE_MOCK) {
     await delay()
-    return { updated: true, id, day, time, subject }
+    return { updated: true, id, day, time, subject, meetingLink }
   }
-  return postScript_('updateTimetableEntry', { id, day, time, subject })
+  return postScript_('updateTimetableEntry', { id, day, time, subject, meetingLink })
 }
