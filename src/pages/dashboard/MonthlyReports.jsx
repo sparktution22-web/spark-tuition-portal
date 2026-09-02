@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { FiDownload, FiFileText, FiCalendar, FiSend } from 'react-icons/fi'
+import { FiDownload, FiFileText, FiCalendar, FiSend, FiExternalLink } from 'react-icons/fi'
 import { motion } from 'framer-motion'
+import { useAuth } from '../../contexts/AuthContext.jsx'
 import { useStudentContext } from '../../contexts/StudentContext.jsx'
 import { getDashboardData, getMonthlyPerformanceSummary, getAvailableReportMonths, getYearlyReport, shareMonthlyReport } from '../../services/api/sheetsApi.js'
 import { generateMonthlyReportPDF, generateYearlyReportPDF } from '../../utils/pdfGenerator.js'
@@ -9,6 +10,20 @@ import StudentSwitcher from '../../components/StudentSwitcher.jsx'
 import { SkeletonBlock } from '../../components/Skeleton.jsx'
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+
+// Direct links to the original spreadsheet files for months that predate
+// the app's own record-keeping — before August 2026, attendance lived
+// in separate per-month Google Sheets rather than anything the app
+// itself generates a PDF from. Listed newest-first.
+const HISTORICAL_SHEETS = [
+  { label: 'July 2026', url: 'https://docs.google.com/spreadsheets/d/1roKZArFxGnJH7kXUW4-QFGZP2foyLJ81/edit?usp=sharing&ouid=110475522126419078967&rtpof=true&sd=true' },
+  { label: 'June 2026', url: 'https://docs.google.com/spreadsheets/d/1CUnuMg2e00PUozuxyuGFacLG1MXcVIaW/edit?usp=sharing&ouid=110475522126419078967&rtpof=true&sd=true' },
+  { label: 'May 2026', url: 'https://docs.google.com/spreadsheets/d/1o69O2UH34v19fJWxUQzK4_fjLVFCEeeH/edit?usp=sharing&ouid=110475522126419078967&rtpof=true&sd=true' },
+  { label: 'April 2026', url: 'https://docs.google.com/spreadsheets/d/1ssJqqjD0Lh4Vk9qqfju85liGS6B6WHR0/edit?usp=sharing&ouid=110475522126419078967&rtpof=true&sd=true' },
+  { label: 'March 2026', url: 'https://docs.google.com/spreadsheets/d/1uBoC89QDIX1kBEwVQV1ItfESueGQToy8/edit?usp=sharing&ouid=110475522126419078967&rtpof=true&sd=true' },
+  { label: 'February 2026', url: 'https://docs.google.com/spreadsheets/d/1NsQC8_b4wH9Youhqx-oaf3aCmunq0cx0/edit?usp=sharing&ouid=110475522126419078967&rtpof=true&sd=true' },
+  { label: 'January 2026', url: 'https://docs.google.com/spreadsheets/d/1yZcL0tGz10BYKYokQlCFSsOPxAt-3jR9/edit?usp=sharing&ouid=110475522126419078967&rtpof=true&sd=true' },
+]
 
 // Same phone-number formatting already used for fee reminders — turns
 // a stored parent number into the digits-only, country-code-prefixed
@@ -41,6 +56,7 @@ const _now = new Date()
 const CURRENT_MONTH_KEY = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, '0')}`
 
 export default function MonthlyReports() {
+  const { user } = useAuth()
   const { selectedStudentId, selectedStudent } = useStudentContext()
   const [availableMonths, setAvailableMonths] = useState([])
   const [selectedMonthKey, setSelectedMonthKey] = useState(CURRENT_MONTH_KEY)
@@ -376,6 +392,29 @@ export default function MonthlyReports() {
           Only months with real recorded data are shown here.
         </p>
       </div>
+
+      {user?.role === 'admin' && (
+        <div className="bg-white dark:bg-white/5 rounded-xl2 shadow-card border border-spark-ink/5 dark:border-white/10 p-6">
+          <h3 className="font-display font-bold text-spark-ink dark:text-white mb-1">Older Records</h3>
+          <p className="text-xs text-spark-ink/50 dark:text-white/50 mb-4">
+            January&ndash;July 2026 lived in separate spreadsheets before the app's continuous attendance sheet started \u2014 open any month's original file directly.
+          </p>
+          <div className="grid sm:grid-cols-2 gap-2.5">
+            {HISTORICAL_SHEETS.map((sheet) => (
+              <a
+                key={sheet.label}
+                href={sheet.url}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center justify-between gap-2 px-4 py-3 rounded-xl border border-spark-ink/10 dark:border-white/10 text-sm font-semibold text-spark-ink dark:text-white hover:border-spark-orange hover:text-spark-orange transition-colors"
+              >
+                {sheet.label}
+                <FiExternalLink size={14} className="shrink-0" />
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
