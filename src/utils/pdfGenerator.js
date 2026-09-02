@@ -328,7 +328,7 @@ function summarizeByMonth(attendance) {
  * transfers or a parent's own complete record, distinct from the
  * month-specific Monthly Report.
  */
-export function generateYearlyReportPDF({ student, attendance, marks, fees }) {
+export function generateYearlyReportPDF({ student, attendance, marks, fees, skipSave = false }) {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' })
   const pageWidth = doc.internal.pageSize.getWidth()
   const margin = 40
@@ -472,5 +472,6 @@ export function generateYearlyReportPDF({ student, attendance, marks, fees }) {
     { align: 'center' }
   )
 
-  doc.save(`SPARK_FullYearRecord_${studentName.replace(/\s+/g, '_')}.pdf`)
+  if (!skipSave) doc.save(`SPARK_FullYearRecord_${studentName.replace(/\s+/g, '_')}.pdf`)
+  return doc
 }
