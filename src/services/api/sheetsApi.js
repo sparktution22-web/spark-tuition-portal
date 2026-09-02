@@ -511,6 +511,17 @@ export async function shareMonthlyReport(studentId, monthLabel, pdfBase64) {
   return postScript_('shareMonthlyReport', { studentId, monthLabel, pdfBase64 })
 }
 
+// Admin-only in the UI. Saves an already-generated Full Year Record
+// PDF (as base64) to Drive and returns a reliable link to it — an
+// alternative to relying on the browser's own download mechanism.
+export async function saveYearlyReportPdf(studentId, pdfBase64) {
+  if (USE_MOCK) {
+    await delay()
+    return { fileId: 'MOCKY1', viewUrl: '#', downloadUrl: '#' }
+  }
+  return postScript_('saveYearlyReportPdf', { studentId, pdfBase64 })
+}
+
 export const isMockMode = USE_MOCK
 
 // ---- AI answer script grading ----
