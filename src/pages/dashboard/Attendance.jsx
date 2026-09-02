@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { FiDownload, FiSearch } from 'react-icons/fi'
 import { useAuth } from '../../contexts/AuthContext.jsx'
 import { useStudentContext } from '../../contexts/StudentContext.jsx'
-import { getAttendance, getAdminDashboard } from '../../services/api/sheetsApi.js'
+import { getAttendance, getAdminDashboard, getAvailableReportMonths } from '../../services/api/sheetsApi.js'
 import { summarizeAttendance } from '../../utils/format.js'
 import { loadCached, saveCache } from '../../utils/pageCache.js'
 import StatCard from '../../components/StatCard.jsx'
@@ -10,6 +10,16 @@ import StudentSwitcher from '../../components/StudentSwitcher.jsx'
 import { SkeletonCards, SkeletonTable } from '../../components/Skeleton.jsx'
 import EmptyState from '../../components/EmptyState.jsx'
 import { FiCalendar, FiCheckCircle, FiXCircle, FiClock } from 'react-icons/fi'
+
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+function monthKeyToLabel(key) {
+  const [y, m] = key.split('-')
+  return `${MONTH_NAMES[Number(m) - 1]} ${y}`
+}
+function currentMonthKey() {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+}
 
 const STATUS_STYLES = {
   Present: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10',
@@ -80,10 +90,20 @@ export default function Attendance() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
+  const [months, setMonths] = useState([currentMonthKey()])
+  const [selectedMonth, setSelectedMonth] = useState(currentMonthKey())
 
   useEffect(() => {
     if (!selectedStudentId) return
-    const cacheKey = 'spark_cache_attendance_' + selectedStudentId
+    getAvailableReportMonths(selectedStudentId).then((list) => {
+      const withCurrent = list.includes(currentMonthKey()) ? list : [...list, currentMonthKey()]
+      setMonths(withCurrent.sort())
+    })
+  }, [selectedStudentId])
+
+  useEffect(() => {
+    if (!selectedStudentId) return
+    const cacheKey = 'spark_cache_attendance_' + selectedStudentId + '_' + selectedMonth
     const cached = loadCached(cacheKey)
     if (cached) {
       setRecords(cached)
@@ -91,12 +111,12 @@ export default function Attendance() {
     } else {
       setLoading(true)
     }
-    getAttendance(selectedStudentId).then((data) => {
+    getAttendance(selectedStudentId, selectedMonth).then((data) => {
       setRecords(data)
       setLoading(false)
       saveCache(cacheKey, data)
     })
-  }, [selectedStudentId])
+  }, [selectedStudentId, selectedMonth])
 
   const filtered = useMemo(() => {
     return records.filter((r) => {
@@ -137,7 +157,18 @@ export default function Attendance() {
       {user?.role === 'admin' && <CentreWideStats />}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <StudentSwitcher />
+        <div className="flex items-center gap-3 flex-wrap">
+          <StudentSwitcher />
+          <select
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="px-4 py-2.5 rounded-xl border border-spark-ink/10 dark:border-white/10 dark:bg-transparent dark:text-white text-sm font-semibold focus:border-spark-orange outline-none"
+          >
+            {months.map((m) => (
+              <option key={m} value={m}>{monthKeyToLabel(m)}</option>
+            ))}
+          </select>
+        </div>
         <button
           onClick={exportCSV}
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-white/5 shadow-card text-sm font-semibold text-spark-ink dark:text-white hover:text-spark-orange transition-colors border border-spark-ink/5 dark:border-white/10"

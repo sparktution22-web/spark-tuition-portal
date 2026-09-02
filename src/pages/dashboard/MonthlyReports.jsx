@@ -211,8 +211,18 @@ export default function MonthlyReports() {
   const handleYearlyDownload = async () => {
     if (!selectedStudent) return
     setGenerating(true)
+    setMonthError('')
     try {
-      const yearly = await getYearlyReport(selectedStudentId)
+      // This is the single most expensive request in the app — a
+      // student's entire attendance history, every mark ever recorded,
+      // and every fee tab, all in one call. If it hasn't come back
+      // within 45 seconds, something is genuinely wrong (rather than
+      // just slow) — show a clear error instead of leaving the button
+      // stuck on "Generating..." indefinitely with no feedback.
+      const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('This is taking longer than expected. Please try again — if it keeps happening, let your developer know.')), 45000)
+      )
+      const yearly = await Promise.race([getYearlyReport(selectedStudentId), timeout])
       generateYearlyReportPDF({
         student: { ...selectedStudent, ...yearly.info },
         attendance: yearly.attendance,
