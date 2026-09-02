@@ -2,13 +2,14 @@ import { useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import {
   FiGrid, FiCalendar, FiFileText, FiDollarSign, FiAward, FiDownload,
-  FiBell, FiSettings, FiLogOut, FiUsers, FiBarChart2, FiX, FiClock,
+  FiBell, FiSettings, FiLogOut, FiUsers, FiX, FiClock,
   FiCheckSquare, FiUpload, FiCpu, FiCamera, FiUserPlus, FiMessageCircle, FiBookOpen, FiActivity, FiBook, FiHelpCircle, FiVideo,
   FiChevronDown
 } from 'react-icons/fi'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import sparkLogo from '../assets/spark-logo.png'
 
+// Student/parent sidebar — unchanged, simple flat list.
 const BASE_LINKS = [
   { to: '/app', label: 'Dashboard', icon: FiGrid, end: true },
   { to: '/app/attendance', label: 'Attendance', icon: FiCalendar },
@@ -25,47 +26,78 @@ const BASE_LINKS = [
   { to: '/app/contact-us', label: 'Contact Us', icon: FiMessageCircle }
 ]
 
-const ADMIN_CATEGORIES = [
+// Admin sidebar — a mix of standalone top-level items and collapsible
+// categories, laid out exactly as requested. Each category carries an
+// `accent` color used for its left-border/icon treatment, so categories
+// are visually distinct from each other at a glance rather than one
+// long uniform list.
+const ADMIN_NAV = [
+  { type: 'link', to: '/app', label: 'Dashboard', icon: FiGrid, end: true },
   {
-    label: 'Students & Accounts',
-    icon: FiUsers,
+    type: 'category', label: 'Student Report', icon: FiFileText, accent: '#FF6B00',
     links: [
-      { to: '/app/admin/students', label: 'Manage Students', icon: FiUsers },
-      { to: '/app/admin/create-account', label: 'Create Login', icon: FiUserPlus },
-      { to: '/app/admin/login-activity', label: 'Login Activity', icon: FiActivity },
+      { to: '/app/student-report', label: 'Student Report', icon: FiFileText },
+      { to: '/app/reports', label: 'Monthly Report', icon: FiDownload },
+      { to: '/app/attendance', label: 'Attendance Report', icon: FiCalendar },
     ]
   },
   {
-    label: 'Attendance & Schedule',
-    icon: FiCalendar,
+    type: 'category', label: 'Test', icon: FiAward, accent: '#8B5CF6',
+    links: [
+      { to: '/app/submit-answer', label: 'Submit Answer Script', icon: FiUpload },
+      { to: '/app/marks', label: 'Test Marks', icon: FiAward },
+      { to: '/app/admin/tests', label: 'Manage Test', icon: FiFileText },
+      { to: '/app/admin/review-submissions', label: 'Review Submission', icon: FiCpu },
+      { to: '/app/admin/marks', label: 'Manage Marks', icon: FiAward },
+    ]
+  },
+  {
+    type: 'category', label: 'Attendance', icon: FiCalendar, accent: '#2ECC71',
     links: [
       { to: '/app/admin/attendance', label: 'Manage Attendance', icon: FiCalendar },
       { to: '/app/admin/scan-attendance', label: 'Scan Attendance', icon: FiCamera },
-      { to: '/app/admin/timetable', label: 'Manage Timetable', icon: FiClock },
-      { to: '/app/admin/online-classes', label: 'Online Classes', icon: FiVideo },
       { to: '/tap-checkin', label: 'Tap Check-In', icon: FiCheckSquare },
     ]
   },
   {
-    label: 'Academics',
-    icon: FiAward,
+    type: 'category', label: 'Classes and Time Table', icon: FiClock, accent: '#3B82F6',
     links: [
-      { to: '/app/admin/marks', label: 'Manage Marks', icon: FiAward },
-      { to: '/app/admin/tests', label: 'Manage Tests', icon: FiFileText },
-      { to: '/app/admin/review-submissions', label: 'Review Submissions', icon: FiCpu },
-      { to: '/app/admin/homework', label: 'Manage Homework', icon: FiBookOpen },
-      { to: '/app/admin/study-materials', label: 'Study Materials', icon: FiBook },
-      { to: '/app/admin/doubt-box', label: 'Doubt Box', icon: FiHelpCircle },
+      { to: '/app/timetable', label: 'Time Table', icon: FiClock },
+      { to: '/app/admin/timetable', label: 'Manage Time Table', icon: FiClock },
+      { to: '/app/admin/online-classes', label: 'Online Classes', icon: FiVideo },
     ]
   },
   {
-    label: 'Fees & Reports',
-    icon: FiDollarSign,
+    type: 'category', label: 'Login', icon: FiUserPlus, accent: '#F59E0B',
     links: [
-      { to: '/app/admin/fees', label: 'Manage Fees', icon: FiDollarSign },
-      { to: '/app/admin/analytics', label: 'Analytics', icon: FiBarChart2 },
+      { to: '/app/admin/login-activity', label: 'Login Activity', icon: FiActivity },
+      { to: '/app/admin/create-account', label: 'Create Login', icon: FiUserPlus },
+      { to: '/app/admin/students', label: 'Manage Students', icon: FiUsers },
     ]
   },
+  { type: 'link', to: '/app/admin/doubt-box', label: 'Doubt Box', icon: FiHelpCircle },
+  {
+    type: 'category', label: 'Material', icon: FiBook, accent: '#EC4899',
+    links: [
+      { to: '/app/study-materials', label: 'Study Material', icon: FiBook },
+      { to: '/app/admin/study-materials', label: 'Manage Study Material', icon: FiBook },
+    ]
+  },
+  {
+    type: 'category', label: 'Student Home Work', icon: FiBookOpen, accent: '#14B8A6',
+    links: [
+      { to: '/app/admin/homework', label: 'Manage Homework', icon: FiBookOpen },
+      { to: '/app/homework', label: 'Homework', icon: FiBookOpen },
+    ]
+  },
+  {
+    type: 'category', label: 'Fees', icon: FiDollarSign, accent: '#FF6B00',
+    links: [
+      { to: '/app/fees', label: 'Fees', icon: FiDollarSign },
+      { to: '/app/admin/fees', label: 'Manage Fees', icon: FiDollarSign },
+    ]
+  },
+  { type: 'link', to: '/app/notifications', label: 'Notification', icon: FiBell },
 ]
 
 // Links hidden entirely for a given role, keyed by role.
@@ -84,13 +116,12 @@ export default function Sidebar({ open, onClose }) {
   const baseLinks = BASE_LINKS.filter((link) => !hidden.includes(link.to))
 
   // Whichever category contains the current route starts expanded, so
-  // navigating straight to a link (e.g. a bookmark, or a page refresh)
-  // never leaves you looking at a collapsed section with no visible
-  // indication of where you are.
+  // navigating straight to a link never leaves you looking at a
+  // collapsed section with no indication of where you are.
   const [openCategory, setOpenCategory] = useState(() => {
     if (!isAdmin) return null
-    const match = ADMIN_CATEGORIES.find((cat) => cat.links.some((l) => location.pathname.startsWith(l.to)))
-    return match ? match.label : ADMIN_CATEGORIES[0].label
+    const match = ADMIN_NAV.find((item) => item.type === 'category' && item.links.some((l) => location.pathname.startsWith(l.to)))
+    return match ? match.label : null
   })
 
   const linkClass = ({ isActive }) =>
@@ -118,47 +149,55 @@ export default function Sidebar({ open, onClose }) {
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 space-y-1" aria-label="Dashboard">
-          {baseLinks.map((link) => (
+          {!isAdmin && baseLinks.map((link) => (
             <NavLink key={link.to} to={link.to} end={link.end} onClick={onClose} className={linkClass}>
               <link.icon className="w-[18px] h-[18px] shrink-0" />
               {link.label}
             </NavLink>
           ))}
 
-          {isAdmin && (
-            <div className="pt-3 mt-2 border-t border-spark-ink/5 dark:border-white/10 space-y-1">
-              {ADMIN_CATEGORIES.map((cat) => {
-                const isOpen = openCategory === cat.label
-                return (
-                  <div key={cat.label}>
-                    <button
-                      onClick={() => setOpenCategory(isOpen ? null : cat.label)}
-                      className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wide text-spark-ink/40 dark:text-white/40 hover:text-spark-orange transition-colors"
-                    >
-                      <span className="flex items-center gap-2"><cat.icon className="w-[15px] h-[15px]" /> {cat.label}</span>
-                      <FiChevronDown className={`w-[14px] h-[14px] transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-                    </button>
-                    {isOpen && (
-                      <div className="space-y-1 pl-1">
-                        {cat.links.map((link) => (
-                          <NavLink key={link.to} to={link.to} onClick={onClose} className={linkClass}>
-                            <link.icon className="w-[18px] h-[18px] shrink-0" />
-                            {link.label}
-                          </NavLink>
-                        ))}
-                      </div>
-                    )}
+          {isAdmin && ADMIN_NAV.map((item) => {
+            if (item.type === 'link') {
+              return (
+                <NavLink key={item.to} to={item.to} end={item.end} onClick={onClose} className={linkClass}>
+                  <item.icon className="w-[18px] h-[18px] shrink-0" />
+                  {item.label}
+                </NavLink>
+              )
+            }
+            const isOpen = openCategory === item.label
+            return (
+              <div key={item.label}>
+                <button
+                  onClick={() => setOpenCategory(isOpen ? null : item.label)}
+                  className={`w-full flex items-center justify-between gap-2 pl-3 pr-3.5 py-2.5 rounded-xl text-sm font-bold transition-colors border-l-[3px] ${
+                    isOpen
+                      ? 'bg-spark-surface dark:bg-white/5 text-spark-ink dark:text-white'
+                      : 'text-spark-ink/70 dark:text-white/70 hover:bg-spark-peach/60 dark:hover:bg-white/5'
+                  }`}
+                  style={{ borderLeftColor: isOpen ? item.accent : 'transparent' }}
+                >
+                  <span className="flex items-center gap-2.5">
+                    <item.icon className="w-[17px] h-[17px] shrink-0" style={{ color: item.accent }} />
+                    {item.label}
+                  </span>
+                  <FiChevronDown className={`w-[14px] h-[14px] shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+                </button>
+                <div className={`overflow-hidden transition-all duration-200 ${isOpen ? 'max-h-96 opacity-100 mt-1' : 'max-h-0 opacity-0'}`}>
+                  <div className="space-y-1 pl-3 border-l-2 ml-4 mb-1" style={{ borderColor: item.accent + '30' }}>
+                    {item.links.map((link) => (
+                      <NavLink key={link.to} to={link.to} onClick={onClose} className={linkClass}>
+                        <link.icon className="w-[16px] h-[16px] shrink-0" />
+                        {link.label}
+                      </NavLink>
+                    ))}
                   </div>
-                )
-              })}
-            </div>
-          )}
+                </div>
+              </div>
+            )
+          })}
 
-          <NavLink
-            to="/app/settings"
-            onClick={onClose}
-            className={linkClass}
-          >
+          <NavLink to="/app/settings" onClick={onClose} className={linkClass}>
             <FiSettings className="w-[18px] h-[18px] shrink-0" />
             Settings
           </NavLink>
