@@ -1,8 +1,10 @@
-import { NavLink } from 'react-router-dom'
+import { useState } from 'react'
+import { NavLink, useLocation } from 'react-router-dom'
 import {
   FiGrid, FiCalendar, FiFileText, FiDollarSign, FiAward, FiDownload,
   FiBell, FiSettings, FiLogOut, FiUsers, FiBarChart2, FiX, FiClock,
-  FiCheckSquare, FiUpload, FiCpu, FiCamera, FiUserPlus, FiMessageCircle, FiBookOpen, FiActivity, FiBook, FiHelpCircle, FiVideo
+  FiCheckSquare, FiUpload, FiCpu, FiCamera, FiUserPlus, FiMessageCircle, FiBookOpen, FiActivity, FiBook, FiHelpCircle, FiVideo,
+  FiChevronDown
 } from 'react-icons/fi'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import sparkLogo from '../assets/spark-logo.png'
@@ -23,23 +25,47 @@ const BASE_LINKS = [
   { to: '/app/contact-us', label: 'Contact Us', icon: FiMessageCircle }
 ]
 
-const ADMIN_LINKS = [
-  { to: '/app/admin/students', label: 'Manage Students', icon: FiUsers },
-  { to: '/app/admin/attendance', label: 'Manage Attendance', icon: FiCalendar },
-  { to: '/app/admin/scan-attendance', label: 'Scan Attendance', icon: FiCamera },
-  { to: '/app/admin/marks', label: 'Manage Marks', icon: FiAward },
-  { to: '/app/admin/fees', label: 'Manage Fees', icon: FiDollarSign },
-  { to: '/app/admin/create-account', label: 'Create Login', icon: FiUserPlus },
-  { to: '/app/admin/homework', label: 'Manage Homework', icon: FiBookOpen },
-  { to: '/app/admin/online-classes', label: 'Online Classes', icon: FiVideo },
-  { to: '/app/admin/study-materials', label: 'Study Materials', icon: FiBook },
-  { to: '/app/admin/doubt-box', label: 'Doubt Box', icon: FiHelpCircle },
-  { to: '/app/admin/login-activity', label: 'Login Activity', icon: FiActivity },
-  { to: '/app/admin/tests', label: 'Manage Tests', icon: FiFileText },
-  { to: '/app/admin/review-submissions', label: 'Review Submissions', icon: FiCpu },
-  { to: '/app/admin/timetable', label: 'Manage Timetable', icon: FiClock },
-  { to: '/app/admin/analytics', label: 'Analytics', icon: FiBarChart2 },
-  { to: '/tap-checkin', label: 'Tap Check-In', icon: FiCheckSquare }
+const ADMIN_CATEGORIES = [
+  {
+    label: 'Students & Accounts',
+    icon: FiUsers,
+    links: [
+      { to: '/app/admin/students', label: 'Manage Students', icon: FiUsers },
+      { to: '/app/admin/create-account', label: 'Create Login', icon: FiUserPlus },
+      { to: '/app/admin/login-activity', label: 'Login Activity', icon: FiActivity },
+    ]
+  },
+  {
+    label: 'Attendance & Schedule',
+    icon: FiCalendar,
+    links: [
+      { to: '/app/admin/attendance', label: 'Manage Attendance', icon: FiCalendar },
+      { to: '/app/admin/scan-attendance', label: 'Scan Attendance', icon: FiCamera },
+      { to: '/app/admin/timetable', label: 'Manage Timetable', icon: FiClock },
+      { to: '/app/admin/online-classes', label: 'Online Classes', icon: FiVideo },
+      { to: '/tap-checkin', label: 'Tap Check-In', icon: FiCheckSquare },
+    ]
+  },
+  {
+    label: 'Academics',
+    icon: FiAward,
+    links: [
+      { to: '/app/admin/marks', label: 'Manage Marks', icon: FiAward },
+      { to: '/app/admin/tests', label: 'Manage Tests', icon: FiFileText },
+      { to: '/app/admin/review-submissions', label: 'Review Submissions', icon: FiCpu },
+      { to: '/app/admin/homework', label: 'Manage Homework', icon: FiBookOpen },
+      { to: '/app/admin/study-materials', label: 'Study Materials', icon: FiBook },
+      { to: '/app/admin/doubt-box', label: 'Doubt Box', icon: FiHelpCircle },
+    ]
+  },
+  {
+    label: 'Fees & Reports',
+    icon: FiDollarSign,
+    links: [
+      { to: '/app/admin/fees', label: 'Manage Fees', icon: FiDollarSign },
+      { to: '/app/admin/analytics', label: 'Analytics', icon: FiBarChart2 },
+    ]
+  },
 ]
 
 // Links hidden entirely for a given role, keyed by role.
@@ -51,10 +77,28 @@ const HIDDEN_FOR_ROLE = {
 
 export default function Sidebar({ open, onClose }) {
   const { user, logout } = useAuth()
+  const location = useLocation()
+  const isAdmin = user?.role === 'admin'
 
-  const allLinks = user?.role === 'admin' ? [...BASE_LINKS, ...ADMIN_LINKS] : BASE_LINKS
   const hidden = HIDDEN_FOR_ROLE[user?.role] || []
-  const links = allLinks.filter((link) => !hidden.includes(link.to))
+  const baseLinks = BASE_LINKS.filter((link) => !hidden.includes(link.to))
+
+  // Whichever category contains the current route starts expanded, so
+  // navigating straight to a link (e.g. a bookmark, or a page refresh)
+  // never leaves you looking at a collapsed section with no visible
+  // indication of where you are.
+  const [openCategory, setOpenCategory] = useState(() => {
+    if (!isAdmin) return null
+    const match = ADMIN_CATEGORIES.find((cat) => cat.links.some((l) => location.pathname.startsWith(l.to)))
+    return match ? match.label : ADMIN_CATEGORIES[0].label
+  })
+
+  const linkClass = ({ isActive }) =>
+    `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+      isActive
+        ? 'bg-spark-gradient text-white shadow-soft'
+        : 'text-spark-ink/60 dark:text-white/60 hover:bg-spark-peach dark:hover:bg-white/5 hover:text-spark-orange'
+    }`
 
   return (
     <>
@@ -74,35 +118,46 @@ export default function Sidebar({ open, onClose }) {
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 space-y-1" aria-label="Dashboard">
-          {links.map((link) => (
-            <NavLink
-              key={link.to}
-              to={link.to}
-              end={link.end}
-              onClick={onClose}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
-                  isActive
-                    ? 'bg-spark-gradient text-white shadow-soft'
-                    : 'text-spark-ink/60 dark:text-white/60 hover:bg-spark-peach dark:hover:bg-white/5 hover:text-spark-orange'
-                }`
-              }
-            >
+          {baseLinks.map((link) => (
+            <NavLink key={link.to} to={link.to} end={link.end} onClick={onClose} className={linkClass}>
               <link.icon className="w-[18px] h-[18px] shrink-0" />
               {link.label}
             </NavLink>
           ))}
 
+          {isAdmin && (
+            <div className="pt-3 mt-2 border-t border-spark-ink/5 dark:border-white/10 space-y-1">
+              {ADMIN_CATEGORIES.map((cat) => {
+                const isOpen = openCategory === cat.label
+                return (
+                  <div key={cat.label}>
+                    <button
+                      onClick={() => setOpenCategory(isOpen ? null : cat.label)}
+                      className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wide text-spark-ink/40 dark:text-white/40 hover:text-spark-orange transition-colors"
+                    >
+                      <span className="flex items-center gap-2"><cat.icon className="w-[15px] h-[15px]" /> {cat.label}</span>
+                      <FiChevronDown className={`w-[14px] h-[14px] transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    {isOpen && (
+                      <div className="space-y-1 pl-1">
+                        {cat.links.map((link) => (
+                          <NavLink key={link.to} to={link.to} onClick={onClose} className={linkClass}>
+                            <link.icon className="w-[18px] h-[18px] shrink-0" />
+                            {link.label}
+                          </NavLink>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
           <NavLink
             to="/app/settings"
             onClick={onClose}
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
-                isActive
-                  ? 'bg-spark-gradient text-white shadow-soft'
-                  : 'text-spark-ink/60 dark:text-white/60 hover:bg-spark-peach dark:hover:bg-white/5 hover:text-spark-orange'
-              }`
-            }
+            className={linkClass}
           >
             <FiSettings className="w-[18px] h-[18px] shrink-0" />
             Settings
