@@ -3,7 +3,7 @@ import { FiDownload, FiFileText, FiCalendar, FiSend, FiExternalLink } from 'reac
 import { motion } from 'framer-motion'
 import { useAuth } from '../../contexts/AuthContext.jsx'
 import { useStudentContext } from '../../contexts/StudentContext.jsx'
-import { getDashboardData, getMonthlyPerformanceSummary, getAvailableReportMonths, getYearlyReport, shareMonthlyReport } from '../../services/api/sheetsApi.js'
+import { getDashboardData, getMonthlyPerformanceSummary, getAvailableReportMonths, getYearlyReport, saveYearlyReportPdf, shareMonthlyReport } from '../../services/api/sheetsApi.js'
 import { generateMonthlyReportPDF, generateYearlyReportPDF } from '../../utils/pdfGenerator.js'
 import { loadCached, saveCache } from '../../utils/pageCache.js'
 import StudentSwitcher from '../../components/StudentSwitcher.jsx'
@@ -224,10 +224,13 @@ export default function MonthlyReports() {
     }
   }
 
+  const [yearlyLink, setYearlyLink] = useState(null)
+
   const handleYearlyDownload = async () => {
     if (!selectedStudent) return
     setGenerating(true)
     setMonthError('')
+    setYearlyLink(null)
     try {
       // This is the single most expensive request in the app — a
       // student's entire attendance history, every mark ever recorded,
@@ -239,12 +242,22 @@ export default function MonthlyReports() {
         setTimeout(() => reject(new Error('This is taking longer than expected. Please try again — if it keeps happening, let your developer know.')), 45000)
       )
       const yearly = await Promise.race([getYearlyReport(selectedStudentId), timeout])
-      generateYearlyReportPDF({
+
+      // Generate WITHOUT triggering the browser's own download — that
+      // mechanism can behave inconsistently, especially on mobile or
+      // inside an installed PWA. Instead, upload the PDF to Drive and
+      // give a real link, which opens reliably everywhere the same way.
+      const doc = generateYearlyReportPDF({
         student: { ...selectedStudent, ...yearly.info },
         attendance: yearly.attendance,
         marks: yearly.marks,
-        fees: yearly.fees
+        fees: yearly.fees,
+        skipSave: true
       })
+      const pdfBase64 = doc.output('datauristring').split(',')[1]
+      const saved = await saveYearlyReportPdf(selectedStudentId, pdfBase64)
+      setYearlyLink(saved.viewUrl)
+      window.open(saved.viewUrl, '_blank')
     } catch (err) {
       setMonthError(err.message || 'Could not generate the full year record. Please try again.')
     } finally {
@@ -334,18 +347,35 @@ export default function MonthlyReports() {
       </motion.div>
 
       {/* Full year record */}
-      <div className="bg-white dark:bg-white/5 rounded-xl2 shadow-card border border-spark-ink/5 dark:border-white/10 p-6 flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h3 className="font-display font-bold text-spark-ink dark:text-white mb-1">Full Year Record</h3>
-          <p className="text-xs text-spark-ink/50 dark:text-white/50">One document covering every available month \u2014 attendance by month, all marks, and full fee history. Useful for school transfers or a complete personal record.</p>
+      <div className="bg-white dark:bg-white/5 rounded-xl2 shadow-card border border-spark-ink/5 dark:border-white/10 p-6">
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <h3 className="font-display font-bold text-spark-ink dark:text-white mb-1">Full Year Record</h3>
+            <p className="text-xs text-spark-ink/50 dark:text-white/50">One document covering every available month \u2014 attendance by month, all marks, and full fee history. Useful for school transfers or a complete personal record.</p>
+          </div>
+          <button
+            onClick={handleYearlyDownload}
+            disabled={generating}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-spark-gradient text-white text-sm font-bold shadow-soft hover:shadow-card-hover transition-all disabled:opacity-60 shrink-0"
+          >
+            <FiDownload /> {generating ? 'Generating...' : 'Download Full Year'}
+          </button>
         </div>
-        <button
-          onClick={handleYearlyDownload}
-          disabled={generating}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-spark-gradient text-white text-sm font-bold shadow-soft hover:shadow-card-hover transition-all disabled:opacity-60 shrink-0"
-        >
-          <FiDownload /> {generating ? 'Generating...' : 'Download Full Year'}
-        </button>
+        {yearlyLink && (
+          <div className="mt-4 flex items-center gap-2 px-4 py-3 rounded-xl bg-emerald-50 dark:bg-emerald-500/10">
+            <p className="text-sm text-emerald-700 dark:text-emerald-400 font-semibold flex-1">
+              Ready \u2014 it should have opened in a new tab. If it didn't, tap here:
+            </p>
+            <a
+              href={yearlyLink}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-emerald-500 text-white text-xs font-bold shrink-0"
+            >
+              <FiDownload size={13} /> Open Report
+            </a>
+          </div>
+        )}
       </div>
 
       {/* Month picker */}
