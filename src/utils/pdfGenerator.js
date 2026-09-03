@@ -328,7 +328,7 @@ function summarizeByMonth(attendance) {
  * transfers or a parent's own complete record, distinct from the
  * month-specific Monthly Report.
  */
-export function generateYearlyReportPDF({ student, attendance, marks, fees, skipSave = false }) {
+export function generateYearlyReportPDF({ student, attendance, marks, fees, academicYearLabel, skipSave = false }) {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' })
   const pageWidth = doc.internal.pageSize.getWidth()
   const margin = 40
@@ -353,7 +353,7 @@ export function generateYearlyReportPDF({ student, attendance, marks, fees, skip
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(9)
   doc.setTextColor(...MUTED)
-  doc.text('Cumulative \u00b7 All Available Months', pageWidth - margin, y + 14, { align: 'right' })
+  doc.text(`Academic Year ${academicYearLabel || ''}`, pageWidth - margin, y + 14, { align: 'right' })
 
   y += 40
   doc.setDrawColor(230, 230, 230)
