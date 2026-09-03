@@ -225,44 +225,66 @@ export default function MonthlyReports() {
   }
 
   const [yearlyLink, setYearlyLink] = useState(null)
+  const [yearlyStatus, setYearlyStatus] = useState('')
 
   const handleYearlyDownload = async () => {
-    if (!selectedStudent) return
+    if (!selectedStudent) {
+      setMonthError('No student is selected \u2014 pick a student first.')
+      return
+    }
     setGenerating(true)
     setMonthError('')
     setYearlyLink(null)
-    try {
-      // This is the single most expensive request in the app — a
-      // student's entire attendance history, every mark ever recorded,
-      // and every fee tab, all in one call. If it hasn't come back
-      // within 45 seconds, something is genuinely wrong (rather than
-      // just slow) — show a clear error instead of leaving the button
-      // stuck on "Generating..." indefinitely with no feedback.
-      const timeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('This is taking longer than expected. Please try again — if it keeps happening, let your developer know.')), 45000)
-      )
-      const yearly = await Promise.race([getYearlyReport(selectedStudentId), timeout])
+    setYearlyStatus('Starting...')
 
-      // Generate WITHOUT triggering the browser's own download — that
-      // mechanism can behave inconsistently, especially on mobile or
-      // inside an installed PWA. Instead, upload the PDF to Drive and
-      // give a real link, which opens reliably everywhere the same way.
-      const doc = generateYearlyReportPDF({
+    let yearly
+    try {
+      setYearlyStatus('Fetching attendance, marks, and fees (this can take up to 30-40 seconds)...')
+      const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Fetching the data took too long (over 45 seconds) and was stopped. This usually means the backend itself is slow or stuck \u2014 please check the Apps Script Executions log for "getYearlyReport_ TIMING" lines.')), 45000)
+      )
+      yearly = await Promise.race([getYearlyReport(selectedStudentId), timeout])
+    } catch (err) {
+      setYearlyStatus('')
+      setMonthError('Step 1 (fetching data) failed: ' + (err.message || 'unknown error'))
+      setGenerating(false)
+      return
+    }
+
+    let doc
+    try {
+      setYearlyStatus('Data received. Building the PDF...')
+      doc = generateYearlyReportPDF({
         student: { ...selectedStudent, ...yearly.info },
         attendance: yearly.attendance,
         marks: yearly.marks,
         fees: yearly.fees,
+        academicYearLabel: yearly.academicYearLabel,
         skipSave: true
       })
-      const pdfBase64 = doc.output('datauristring').split(',')[1]
-      const saved = await saveYearlyReportPdf(selectedStudentId, pdfBase64)
-      setYearlyLink(saved.viewUrl)
-      window.open(saved.viewUrl, '_blank')
     } catch (err) {
-      setMonthError(err.message || 'Could not generate the full year record. Please try again.')
-    } finally {
+      setYearlyStatus('')
+      setMonthError('Step 2 (building the PDF) failed: ' + (err.message || 'unknown error'))
       setGenerating(false)
+      return
     }
+
+    let saved
+    try {
+      setYearlyStatus('PDF built. Uploading to Drive...')
+      const pdfBase64 = doc.output('datauristring').split(',')[1]
+      saved = await saveYearlyReportPdf(selectedStudentId, pdfBase64)
+    } catch (err) {
+      setYearlyStatus('')
+      setMonthError('Step 3 (uploading to Drive) failed: ' + (err.message || 'unknown error'))
+      setGenerating(false)
+      return
+    }
+
+    setYearlyStatus('Done!')
+    setYearlyLink(saved.viewUrl)
+    window.open(saved.viewUrl, '_blank')
+    setGenerating(false)
   }
 
   // Present/Absent counts + a real percentage. "No Class" days are
@@ -351,7 +373,7 @@ export default function MonthlyReports() {
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <h3 className="font-display font-bold text-spark-ink dark:text-white mb-1">Full Year Record</h3>
-            <p className="text-xs text-spark-ink/50 dark:text-white/50">One document covering every available month \u2014 attendance by month, all marks, and full fee history. Useful for school transfers or a complete personal record.</p>
+            <p className="text-xs text-spark-ink/50 dark:text-white/50">One document covering the current academic year \u2014 attendance by month, all marks, and full fee history. Useful for school transfers or a complete personal record.</p>
           </div>
           <button
             onClick={handleYearlyDownload}
@@ -361,6 +383,12 @@ export default function MonthlyReports() {
             <FiDownload /> {generating ? 'Generating...' : 'Download Full Year'}
           </button>
         </div>
+        {generating && yearlyStatus && (
+          <div className="mt-4 flex items-center gap-2 px-4 py-3 rounded-xl bg-spark-surface dark:bg-white/5">
+            <div className="w-4 h-4 border-2 border-spark-orange border-t-transparent rounded-full animate-spin shrink-0" />
+            <p className="text-sm text-spark-ink dark:text-white font-semibold">{yearlyStatus}</p>
+          </div>
+        )}
         {yearlyLink && (
           <div className="mt-4 flex items-center gap-2 px-4 py-3 rounded-xl bg-emerald-50 dark:bg-emerald-500/10">
             <p className="text-sm text-emerald-700 dark:text-emerald-400 font-semibold flex-1">
