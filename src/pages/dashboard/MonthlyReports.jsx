@@ -3,8 +3,8 @@ import { FiDownload, FiFileText, FiCalendar, FiSend, FiExternalLink } from 'reac
 import { motion } from 'framer-motion'
 import { useAuth } from '../../contexts/AuthContext.jsx'
 import { useStudentContext } from '../../contexts/StudentContext.jsx'
-import { getDashboardData, getMonthlyPerformanceSummary, getAvailableReportMonths, getYearlyReport, saveYearlyReportPdf, shareMonthlyReport } from '../../services/api/sheetsApi.js'
-import { generateMonthlyReportPDF, generateYearlyReportPDF } from '../../utils/pdfGenerator.js'
+import { getDashboardData, getMonthlyPerformanceSummary, getAvailableReportMonths, shareMonthlyReport } from '../../services/api/sheetsApi.js'
+import { generateMonthlyReportPDF } from '../../utils/pdfGenerator.js'
 import { loadCached, saveCache } from '../../utils/pageCache.js'
 import StudentSwitcher from '../../components/StudentSwitcher.jsx'
 import { SkeletonBlock } from '../../components/Skeleton.jsx'
@@ -224,69 +224,6 @@ export default function MonthlyReports() {
     }
   }
 
-  const [yearlyLink, setYearlyLink] = useState(null)
-  const [yearlyStatus, setYearlyStatus] = useState('')
-
-  const handleYearlyDownload = async () => {
-    if (!selectedStudent) {
-      setMonthError('No student is selected \u2014 pick a student first.')
-      return
-    }
-    setGenerating(true)
-    setMonthError('')
-    setYearlyLink(null)
-    setYearlyStatus('Starting...')
-
-    let yearly
-    try {
-      setYearlyStatus('Fetching attendance, marks, and fees (this can take up to 30-40 seconds)...')
-      const timeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Fetching the data took too long (over 45 seconds) and was stopped. This usually means the backend itself is slow or stuck \u2014 please check the Apps Script Executions log for "getYearlyReport_ TIMING" lines.')), 45000)
-      )
-      yearly = await Promise.race([getYearlyReport(selectedStudentId), timeout])
-    } catch (err) {
-      setYearlyStatus('')
-      setMonthError('Step 1 (fetching data) failed: ' + (err.message || 'unknown error'))
-      setGenerating(false)
-      return
-    }
-
-    let doc
-    try {
-      setYearlyStatus('Data received. Building the PDF...')
-      doc = generateYearlyReportPDF({
-        student: { ...selectedStudent, ...yearly.info },
-        attendance: yearly.attendance,
-        marks: yearly.marks,
-        fees: yearly.fees,
-        academicYearLabel: yearly.academicYearLabel,
-        skipSave: true
-      })
-    } catch (err) {
-      setYearlyStatus('')
-      setMonthError('Step 2 (building the PDF) failed: ' + (err.message || 'unknown error'))
-      setGenerating(false)
-      return
-    }
-
-    let saved
-    try {
-      setYearlyStatus('PDF built. Uploading to Drive...')
-      const pdfBase64 = doc.output('datauristring').split(',')[1]
-      saved = await saveYearlyReportPdf(selectedStudentId, pdfBase64)
-    } catch (err) {
-      setYearlyStatus('')
-      setMonthError('Step 3 (uploading to Drive) failed: ' + (err.message || 'unknown error'))
-      setGenerating(false)
-      return
-    }
-
-    setYearlyStatus('Done!')
-    setYearlyLink(saved.viewUrl)
-    window.open(saved.viewUrl, '_blank')
-    setGenerating(false)
-  }
-
   // Present/Absent counts + a real percentage. "No Class" days are
   // excluded entirely, same as an unrecorded future day — never shown
   // as a separate "Holiday" category (see Attendance.jsx/pdfGenerator.js
@@ -367,44 +304,6 @@ export default function MonthlyReports() {
           </>
         )}
       </motion.div>
-
-      {/* Full year record */}
-      <div className="bg-white dark:bg-white/5 rounded-xl2 shadow-card border border-spark-ink/5 dark:border-white/10 p-6">
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div>
-            <h3 className="font-display font-bold text-spark-ink dark:text-white mb-1">Full Year Record</h3>
-            <p className="text-xs text-spark-ink/50 dark:text-white/50">One document covering the current academic year \u2014 attendance by month, all marks, and full fee history. Useful for school transfers or a complete personal record.</p>
-          </div>
-          <button
-            onClick={handleYearlyDownload}
-            disabled={generating}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-spark-gradient text-white text-sm font-bold shadow-soft hover:shadow-card-hover transition-all disabled:opacity-60 shrink-0"
-          >
-            <FiDownload /> {generating ? 'Generating...' : 'Download Full Year'}
-          </button>
-        </div>
-        {generating && yearlyStatus && (
-          <div className="mt-4 flex items-center gap-2 px-4 py-3 rounded-xl bg-spark-surface dark:bg-white/5">
-            <div className="w-4 h-4 border-2 border-spark-orange border-t-transparent rounded-full animate-spin shrink-0" />
-            <p className="text-sm text-spark-ink dark:text-white font-semibold">{yearlyStatus}</p>
-          </div>
-        )}
-        {yearlyLink && (
-          <div className="mt-4 flex items-center gap-2 px-4 py-3 rounded-xl bg-emerald-50 dark:bg-emerald-500/10">
-            <p className="text-sm text-emerald-700 dark:text-emerald-400 font-semibold flex-1">
-              Ready \u2014 it should have opened in a new tab. If it didn't, tap here:
-            </p>
-            <a
-              href={yearlyLink}
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-emerald-500 text-white text-xs font-bold shrink-0"
-            >
-              <FiDownload size={13} /> Open Report
-            </a>
-          </div>
-        )}
-      </div>
 
       {/* Month picker */}
       <div className="bg-white dark:bg-white/5 rounded-xl2 shadow-card border border-spark-ink/5 dark:border-white/10 p-6">
