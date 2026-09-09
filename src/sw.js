@@ -2,10 +2,24 @@ import { precacheAndRoute } from 'workbox-precaching'
 import { registerRoute } from 'workbox-routing'
 import { NetworkFirst } from 'workbox-strategies'
 import { ExpirationPlugin } from 'workbox-expiration'
-import { clientsClaim } from 'workbox-core'
 
 self.skipWaiting()
-clientsClaim()
+// Deliberately NOT calling clientsClaim() here. Combined with
+// skipWaiting(), that would make a newly-deployed service worker
+// immediately seize control of tabs that are ALREADY open and in active
+// use, the moment it finishes activating in the background — a
+// well-documented PWA gotcha. If a student had the app open and a new
+// deployment happened while it sat backgrounded, coming back to the
+// foreground could trigger exactly this kind of unexpected mid-session
+// takeover, which is a very plausible explanation for reports of the
+// app "logging out" after being backgrounded — not a real logout, but
+// the page's context getting pulled out from under it unexpectedly.
+// Without clientsClaim(), an already-open tab keeps using whichever
+// service worker it started with until it's next closed and reopened
+// (or manually reloaded) — new tabs/reloads still pick up the latest
+// version right away thanks to skipWaiting() above, so updates still
+// roll out reasonably quickly, just without interrupting sessions
+// already in progress.
 
 // Precaches every built file — this replaces what generateSW used to
 // do automatically. __WB_MANIFEST is replaced at build time by
