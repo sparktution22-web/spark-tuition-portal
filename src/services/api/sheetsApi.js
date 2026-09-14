@@ -522,6 +522,43 @@ export async function saveYearlyReportPdf(studentId, pdfBase64) {
   return postScript_('saveYearlyReportPdf', { studentId, pdfBase64 })
 }
 
+// Admin-only in the UI. Marks a student as having left — reversible,
+// never touches or deletes their historical data. Optional reason.
+export async function markStudentInactive(studentId, reason) {
+  if (USE_MOCK) {
+    await delay()
+    return { studentId, inactive: true }
+  }
+  return postScript_('markStudentInactive', { studentId, reason })
+}
+// Admin-only in the UI. Reverses markStudentInactive — for a mistake,
+// or a student returning.
+export async function markStudentActive(studentId) {
+  if (USE_MOCK) {
+    await delay()
+    return { studentId, inactive: false }
+  }
+  return postScript_('markStudentActive', { studentId })
+}
+// Admin-only in the UI. Every student currently marked as left.
+export async function getInactiveStudents() {
+  if (USE_MOCK) {
+    await delay()
+    return []
+  }
+  return callScript('getInactiveStudents')
+}
+
+// Admin-only in the UI. Every active student with their parent's
+// contact info — for a "send a message to everyone/selected" tool.
+export async function getBroadcastContacts() {
+  if (USE_MOCK) {
+    await delay()
+    return []
+  }
+  return callScript('getBroadcastContacts')
+}
+
 export const isMockMode = USE_MOCK
 
 // ---- AI answer script grading ----
