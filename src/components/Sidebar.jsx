@@ -4,7 +4,7 @@ import {
   FiGrid, FiCalendar, FiFileText, FiDollarSign, FiAward, FiDownload,
   FiBell, FiSettings, FiLogOut, FiUsers, FiX, FiClock,
   FiCheckSquare, FiUpload, FiCpu, FiCamera, FiUserPlus, FiMessageCircle, FiBookOpen, FiActivity, FiBook, FiHelpCircle, FiVideo,
-  FiChevronDown
+  FiChevronDown, FiSend
 } from 'react-icons/fi'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import sparkLogo from '../assets/spark-logo.png'
@@ -76,6 +76,7 @@ const ADMIN_NAV = [
     ]
   },
   { type: 'link', to: '/app/admin/doubt-box', label: 'Doubt Box', icon: FiHelpCircle },
+  { type: 'link', to: '/app/admin/send-message', label: 'Send Message', icon: FiSend },
   {
     type: 'category', label: 'Material', icon: FiBook, accent: '#EC4899',
     links: [
