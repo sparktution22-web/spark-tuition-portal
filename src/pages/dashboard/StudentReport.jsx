@@ -1,11 +1,22 @@
 import { useEffect, useMemo, useState } from 'react'
 import { FiPrinter, FiDownload, FiSearch } from 'react-icons/fi'
 import { useStudentContext } from '../../contexts/StudentContext.jsx'
-import { getAttendance } from '../../services/api/sheetsApi.js'
+import { getAttendance, getAvailableReportMonths } from '../../services/api/sheetsApi.js'
+import { loadCached, saveCache } from '../../utils/pageCache.js'
 import StudentSwitcher from '../../components/StudentSwitcher.jsx'
 import { SkeletonTable } from '../../components/Skeleton.jsx'
 import EmptyState from '../../components/EmptyState.jsx'
 import { FiFileText } from 'react-icons/fi'
+
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+function monthKeyToLabel(key) {
+  const [y, m] = key.split('-')
+  return `${MONTH_NAMES[Number(m) - 1]} ${y}`
+}
+function currentMonthKey() {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+}
 
 export default function StudentReport() {
   const { selectedStudentId, selectedStudent } = useStudentContext()
@@ -13,15 +24,33 @@ export default function StudentReport() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [sortAsc, setSortAsc] = useState(true)
+  const [months, setMonths] = useState([currentMonthKey()])
+  const [selectedMonth, setSelectedMonth] = useState(currentMonthKey())
 
   useEffect(() => {
     if (!selectedStudentId) return
-    setLoading(true)
-    getAttendance(selectedStudentId).then((data) => {
-      setRecords(data)
-      setLoading(false)
+    getAvailableReportMonths(selectedStudentId).then((list) => {
+      const withCurrent = list.includes(currentMonthKey()) ? list : [...list, currentMonthKey()]
+      setMonths(withCurrent.sort())
     })
   }, [selectedStudentId])
+
+  useEffect(() => {
+    if (!selectedStudentId) return
+    const cacheKey = 'spark_cache_student_report_' + selectedStudentId + '_' + selectedMonth
+    const cached = loadCached(cacheKey)
+    if (cached) {
+      setRecords(cached)
+      setLoading(false)
+    } else {
+      setLoading(true)
+    }
+    getAttendance(selectedStudentId, selectedMonth).then((data) => {
+      setRecords(data)
+      setLoading(false)
+      saveCache(cacheKey, data)
+    })
+  }, [selectedStudentId, selectedMonth])
 
   const filtered = useMemo(() => {
     let list = records.filter((r) =>
@@ -49,7 +78,18 @@ export default function StudentReport() {
   return (
     <div className="space-y-5 print:space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
-        <StudentSwitcher />
+        <div className="flex items-center gap-3 flex-wrap">
+          <StudentSwitcher />
+          <select
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="px-4 py-2.5 rounded-xl border border-spark-ink/10 dark:border-white/10 dark:bg-transparent dark:text-white text-sm font-semibold focus:border-spark-orange outline-none"
+          >
+            {months.map((m) => (
+              <option key={m} value={m}>{monthKeyToLabel(m)}</option>
+            ))}
+          </select>
+        </div>
         <div className="flex gap-2">
           <button
             onClick={() => window.print()}
@@ -71,7 +111,7 @@ export default function StudentReport() {
           <div>
             <h2 className="font-display font-bold text-lg text-spark-ink dark:text-white">{selectedStudent?.name}</h2>
             <p className="text-xs text-spark-ink/50 dark:text-white/50">
-              Class {selectedStudent?.class} · Roll No. {selectedStudent?.rollNo}
+              Class {selectedStudent?.class} · Roll No. {selectedStudent?.rollNo} · {monthKeyToLabel(selectedMonth)}
             </p>
           </div>
           <div className="flex items-center gap-3 print:hidden">
@@ -94,7 +134,7 @@ export default function StudentReport() {
         </div>
 
         {filtered.length === 0 ? (
-          <EmptyState icon={FiFileText} title="No records found" description="Try a different search term." />
+          <EmptyState icon={FiFileText} title="No records found" description="Try a different search term or month." />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
