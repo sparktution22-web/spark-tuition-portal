@@ -1,8 +1,28 @@
 import { useState, useEffect } from 'react'
-import { FiUpload, FiCamera, FiCheck, FiX, FiSave, FiAlertTriangle } from 'react-icons/fi'
+import { FiUpload, FiCamera, FiCheck, FiX, FiSave, FiAlertTriangle, FiRefreshCw } from 'react-icons/fi'
 import { getStudents, extractAttendanceFromImage, addAttendanceEntry, fileToBase64 } from '../../services/api/sheetsApi.js'
 
 const MAX_SIZE_MB = 4
+
+// Apps Script's Spreadsheet service can transiently time out when it's
+// accessed and modified this many times in quick succession (each save
+// here reads a student's whole sheet and sometimes inserts a row) —
+// this is a known, well-documented Apps Script behavior under rapid
+// repeated access, not a real, permanent failure. It almost always
+// succeeds on a second or third try, so retry a couple of times with a
+// short delay before actually giving up on that student.
+async function saveWithRetry(payload, attempts = 3) {
+  let lastError = null
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await addAttendanceEntry(payload)
+    } catch (err) {
+      lastError = err
+      if (i < attempts - 1) await new Promise((r) => setTimeout(r, 800 + i * 800))
+    }
+  }
+  throw lastError
+}
 
 export default function AdminScanAttendance() {
   const [students, setStudents] = useState([])
@@ -73,9 +93,10 @@ export default function AdminScanAttendance() {
     const failed = []
     let savedCount = 0
 
-    for (const row of toSave) {
+    for (let i = 0; i < toSave.length; i++) {
+      const row = toSave[i]
       try {
-        await addAttendanceEntry({
+        await saveWithRetry({
           studentId: row.rollNo,
           date: formattedDate,
           topic: row.topic,
@@ -84,11 +105,46 @@ export default function AdminScanAttendance() {
         })
         savedCount++
       } catch (err) {
-        failed.push({ name: row.studentName || row.handwrittenName, error: err.message })
+        failed.push({ name: row.studentName || row.handwrittenName, error: err.message, row })
       }
+      // A short pause between saves — reduces how rapidly the same
+      // spreadsheet gets hit in succession, which is what triggers the
+      // Spreadsheet service's transient timeouts in the first place.
+      if (i < toSave.length - 1) await new Promise((r) => setTimeout(r, 300))
     }
 
     setSaveResults({ savedCount, failed })
+    setSaving(false)
+  }
+
+  // Re-attempts only the rows that failed last time, without needing to
+  // redo the whole batch or re-check which rows were selected.
+  const retryFailed = async () => {
+    if (!saveResults || saveResults.failed.length === 0) return
+    setSaving(true)
+    const [y, m, d] = date.split('-')
+    const formattedDate = `${d}.${m}.${y}`
+    const stillFailed = []
+    let savedCount = saveResults.savedCount
+
+    for (let i = 0; i < saveResults.failed.length; i++) {
+      const { row } = saveResults.failed[i]
+      try {
+        await saveWithRetry({
+          studentId: row.rollNo,
+          date: formattedDate,
+          topic: row.topic,
+          timeIn: row.timeIn,
+          timeOut: row.timeOut
+        })
+        savedCount++
+      } catch (err) {
+        stillFailed.push({ name: row.studentName || row.handwrittenName, error: err.message, row })
+      }
+      if (i < saveResults.failed.length - 1) await new Promise((r) => setTimeout(r, 300))
+    }
+
+    setSaveResults({ savedCount, failed: stillFailed })
     setSaving(false)
   }
 
@@ -220,6 +276,15 @@ export default function AdminScanAttendance() {
                   {f.name}: {f.error}
                 </p>
               ))}
+              {saveResults.failed.length > 0 && (
+                <button
+                  onClick={retryFailed}
+                  disabled={saving}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 transition-colors disabled:opacity-60"
+                >
+                  <FiRefreshCw className={saving ? 'animate-spin' : ''} /> {saving ? 'Retrying...' : `Retry ${saveResults.failed.length} Failed`}
+                </button>
+              )}
             </div>
           )}
 
