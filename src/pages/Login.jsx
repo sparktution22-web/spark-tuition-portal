@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useAuth, DEMO_ACCOUNTS } from '../contexts/AuthContext.jsx'
+import { requestPasswordReset } from '../services/api/sheetsApi.js'
 import sparkLogo from '../assets/spark-logo.png'
 
 export default function Login() {
@@ -15,6 +16,38 @@ export default function Login() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [showForgotModal, setShowForgotModal] = useState(false)
+  const [forgotRollNo, setForgotRollNo] = useState('')
+  const [forgotRole, setForgotRole] = useState('parent')
+  const [forgotSubmitting, setForgotSubmitting] = useState(false)
+  const [forgotError, setForgotError] = useState('')
+  const [forgotSuccess, setForgotSuccess] = useState(false)
+
+  const closeForgotModal = () => {
+    setShowForgotModal(false)
+    setForgotRollNo('')
+    setForgotRole('parent')
+    setForgotError('')
+    setForgotSuccess(false)
+  }
+
+  const submitForgotRequest = async (e) => {
+    e.preventDefault()
+    setForgotError('')
+    const cleanRollNo = forgotRollNo.trim().toUpperCase()
+    if (!cleanRollNo) {
+      setForgotError('Please enter a roll number.')
+      return
+    }
+    setForgotSubmitting(true)
+    try {
+      await requestPasswordReset(cleanRollNo, forgotRole)
+      setForgotSuccess(true)
+    } catch (err) {
+      setForgotError(err.message || 'Could not send the request. Please try again or message admin on WhatsApp.')
+    } finally {
+      setForgotSubmitting(false)
+    }
+  }
   // Real mode has two ways to log in: roll number (parent/student) or
   // email (admin — admin accounts are created directly in Firebase, not
   // via /register, since self-serve admin signup would be a security hole).
@@ -190,29 +223,104 @@ export default function Login() {
           </button>
 
           {showForgotModal && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center px-6 z-50" onClick={() => setShowForgotModal(false)}>
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center px-6 z-50" onClick={closeForgotModal}>
               <div className="bg-white rounded-2xl p-6 max-w-sm w-full" onClick={(e) => e.stopPropagation()}>
-                <p className="font-display font-bold text-spark-ink mb-2">Forgot your password?</p>
-                <p className="text-sm text-spark-ink/60 leading-relaxed mb-4">
-                  Since accounts here don't use a real email address, password resets can't be sent
-                  automatically. Please contact your tuition centre admin directly — they can reset it
-                  for you right away.
-                </p>
-                <a
-                  href="https://wa.me/919502590645?text=Hi%2C%20I%20forgot%20my%20SPARK%20login%20password%20and%20need%20it%20reset."
-                  target="_blank"
-                  rel="noreferrer"
-                  className="block text-center py-3 rounded-full bg-spark-gradient text-white font-bold text-sm mb-2"
-                >
-                  Message Admin on WhatsApp
-                </a>
-                <button
-                  type="button"
-                  onClick={() => setShowForgotModal(false)}
-                  className="w-full py-2.5 text-sm text-spark-ink/50 font-semibold"
-                >
-                  Close
-                </button>
+                {forgotSuccess ? (
+                  <>
+                    <p className="font-display font-bold text-spark-ink mb-2">Request sent!</p>
+                    <p className="text-sm text-spark-ink/60 leading-relaxed mb-4">
+                      Your admin has been notified and will share a new temporary password with you
+                      on WhatsApp shortly.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={closeForgotModal}
+                      className="w-full py-3 rounded-full bg-spark-gradient text-white font-bold text-sm"
+                    >
+                      Done
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-display font-bold text-spark-ink mb-2">Forgot your password?</p>
+                    <p className="text-sm text-spark-ink/60 leading-relaxed mb-4">
+                      Enter your roll number below and we'll notify your admin to reset it — they'll
+                      share a new temporary password with you on WhatsApp.
+                    </p>
+                    <div className="space-y-3 mb-4">
+                      <div>
+                        <label htmlFor="forgotRollNo" className="text-xs font-semibold text-spark-ink/50 mb-1.5 block">Roll Number</label>
+                        <input
+                          id="forgotRollNo"
+                          type="text"
+                          value={forgotRollNo}
+                          onChange={(e) => setForgotRollNo(e.target.value)}
+                          className="w-full px-4 py-2.5 rounded-xl border border-spark-ink/10 focus:border-spark-orange outline-none transition-colors uppercase"
+                          placeholder="e.g. SPK002"
+                          autoCapitalize="characters"
+                        />
+                      </div>
+                      <div>
+                        <span className="text-xs font-semibold text-spark-ink/50 mb-1.5 block">I am the</span>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setForgotRole('parent')}
+                            className={`py-2 rounded-xl border font-semibold text-sm transition-colors ${
+                              forgotRole === 'parent'
+                                ? 'border-spark-orange bg-spark-orange/10 text-spark-orange'
+                                : 'border-spark-ink/10 text-spark-ink/60'
+                            }`}
+                          >
+                            Parent
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setForgotRole('student')}
+                            className={`py-2 rounded-xl border font-semibold text-sm transition-colors ${
+                              forgotRole === 'student'
+                                ? 'border-spark-orange bg-spark-orange/10 text-spark-orange'
+                                : 'border-spark-ink/10 text-spark-ink/60'
+                            }`}
+                          >
+                            Student
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {forgotError && (
+                      <p className="text-sm text-red-500 bg-red-50 rounded-lg px-3 py-2 mb-3">{forgotError}</p>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={submitForgotRequest}
+                      disabled={forgotSubmitting}
+                      className="w-full text-center py-3 rounded-full bg-spark-gradient text-white font-bold text-sm mb-2 disabled:opacity-60"
+                    >
+                      {forgotSubmitting ? 'Sending request...' : 'Send Reset Request to Admin'}
+                    </button>
+
+                    <p className="text-center text-xs text-spark-ink/40 my-2">or, for a faster response</p>
+
+                    <a
+                      href="https://wa.me/919502590645?text=Hi%2C%20I%20forgot%20my%20SPARK%20login%20password%20and%20need%20it%20reset."
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block text-center py-2.5 rounded-full border-2 border-spark-orange text-spark-orange font-bold text-sm mb-2"
+                    >
+                      Message Admin on WhatsApp
+                    </a>
+                    <button
+                      type="button"
+                      onClick={closeForgotModal}
+                      className="w-full py-2.5 text-sm text-spark-ink/50 font-semibold"
+                    >
+                      Close
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           )}
