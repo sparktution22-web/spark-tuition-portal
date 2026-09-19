@@ -23,11 +23,11 @@ const NAV_LINKS = [
 ]
 
 const SUBJECTS = [
-  { level: 'LKG \u2013 UKG', focus: 'Phonics & Early Reading', days: 'Mon \u2013 Fri' },
-  { level: 'Class I \u2013 V', focus: 'All Subjects, Foundation Building', days: 'Mon \u2013 Fri' },
-  { level: 'Class VI \u2013 VIII', focus: 'Maths, Science, Language', days: 'Mon \u2013 Sat' },
-  { level: 'Class IX \u2013 X', focus: 'Board Exam Preparation', days: 'Mon \u2013 Sat' },
-  { level: 'Class XI \u2013 XII', focus: 'Maths & Science Streams', days: 'Mon \u2013 Sat' }
+  { level: 'LKG – UKG', focus: 'Phonics & Early Reading', days: 'Mon – Fri' },
+  { level: 'Class I – V', focus: 'All Subjects, Foundation Building', days: 'Mon – Fri' },
+  { level: 'Class VI – VIII', focus: 'Maths, Science, Language', days: 'Mon – Sat' },
+  { level: 'Class IX – X', focus: 'Board Exam Preparation', days: 'Mon – Sat' },
+  { level: 'Class XI – XII', focus: 'Maths & Science Streams', days: 'Mon – Sat' }
 ]
 
 const EDUCATORS = [
@@ -37,9 +37,9 @@ const EDUCATORS = [
 
 const PROGRAMS = [
   { title: 'Phonics Program', body: 'Letter sounds and formation, blending and reading, tricky words, interactive worksheets, songs, and more.', tag: 'Ages 4+', icon: 'FiBookOpen' },
-  { title: 'KG \u2013 XII, All Subjects', body: 'Full academic support across every subject, year after year.', icon: 'FiLayers' },
+  { title: 'KG – XII, All Subjects', body: 'Full academic support across every subject, year after year.', icon: 'FiLayers' },
   { title: 'Individual Subject Tuition', body: 'Focused, one-subject coaching for students who need it.', icon: 'FiUser' },
-  { title: 'Special Coaching \u2014 Maths & Hindi', body: 'Extra, focused support in the two subjects students ask for most.', icon: 'FiAward' },
+  { title: 'Special Coaching — Maths & Hindi', body: 'Extra, focused support in the two subjects students ask for most.', icon: 'FiAward' },
   { title: 'Spoken English', body: 'Confidence and fluency for everyday and academic conversation.', icon: 'FiMessageCircle' },
   { title: 'Spoken Hindi', body: 'Practical, conversational Hindi.', icon: 'FiMessageCircle' },
   { title: 'Spoken Telugu', body: 'Practical, conversational Telugu.', icon: 'FiMessageCircle' },
@@ -51,7 +51,7 @@ const TESTIMONIALS = [
   { quote: "I appreciate the individualized attention you give. It's clear you care about each student's progress. We never felt like we were in tuition; it felt more like home.", name: 'Lakshana', detail: 'Class XII student' },
   { quote: 'We have seen remarkable improvement in his results, and more importantly, in his confidence and approach to learning.', name: 'Prasanna', detail: 'Parent of Radhakrishnan' },
   { quote: 'It has been 4 months since Niha started attending, and I have seen a remarkable improvement in her academics. Their knowledge and teaching style are excellent. Highly recommended!', name: 'Saveetha Lakshmanan', detail: 'Parent of Niha' },
-  { quote: "Swathi is a really good teacher with whom to learn Hindi. She made my daughter understand and learn in an easy way \u2014 we can see the progress in her.", name: 'Ramya', detail: 'Parent' },
+  { quote: "Swathi is a really good teacher with whom to learn Hindi. She made my daughter understand and learn in an easy way — we can see the progress in her.", name: 'Ramya', detail: 'Parent' },
   { quote: 'As a working parent, we do not have sufficient time to be attentive to our kid. After joining, I am so glad that my son gets the best support system from you.', name: 'A working parent', detail: 'Parent' },
   { quote: "They made even the toughest subjects like Math and Science easier to understand. My son's confidence and marks have improved a lot. Highly recommend for strong academic support.", name: 'A SPARK parent', detail: 'Parent' }
 ]
@@ -312,7 +312,7 @@ export default function Landing() {
       </footer>
 
       <a
-        href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent('Hi, I\u2019d like to know more about classes at SPARK.')}`}
+        href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent('Hi, I’d like to know more about classes at SPARK.')}`}
         target="_blank"
         rel="noreferrer"
         className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-[#25D366] text-white font-semibold px-5 py-3.5 rounded-full shadow-lg hover:scale-105 transition-transform"
