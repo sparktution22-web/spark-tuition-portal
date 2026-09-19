@@ -27,6 +27,7 @@ import AdminFees from './pages/admin/AdminFees.jsx'
 import AdminCreateAccount from './pages/admin/AdminCreateAccount.jsx'
 import AdminHomework from './pages/admin/AdminHomework.jsx'
 import AdminSendMessage from './pages/admin/AdminSendMessage.jsx'
+import AdminLeftStudents from './pages/admin/AdminLeftStudents.jsx'
 import AdminOnlineClasses from './pages/admin/AdminOnlineClasses.jsx'
 import AdminStudyMaterials from './pages/admin/AdminStudyMaterials.jsx'
 import AdminDoubtBox from './pages/admin/AdminDoubtBox.jsx'
@@ -152,6 +153,14 @@ function App() {
               element={
                 <ProtectedRoute roles={['admin']}>
                   <AdminSendMessage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="admin/left-students"
+              element={
+                <ProtectedRoute roles={['admin']}>
+                  <AdminLeftStudents />
                 </ProtectedRoute>
               }
             />
