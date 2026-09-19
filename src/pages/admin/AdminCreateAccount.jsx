@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { createUserWithEmailAndPassword, signOut } from 'firebase/auth'
-import { FiUserPlus, FiCopy, FiCheckCircle, FiAlertCircle, FiUsers } from 'react-icons/fi'
+import { FiUserPlus, FiCopy, FiCheckCircle, FiAlertCircle, FiUsers, FiKey, FiRefreshCw } from 'react-icons/fi'
 import { secondaryAuth } from '../../services/firebase/secondaryAuth.js'
-import { getStudents, flagPasswordChangeRequired, linkStudentToParent } from '../../services/api/sheetsApi.js'
+import { getStudents, flagPasswordChangeRequired, linkStudentToParent, getPasswordResetRequests, resolvePasswordReset } from '../../services/api/sheetsApi.js'
 
 // A short, easy-to-read-aloud-or-type temporary password — avoids
 // visually ambiguous characters (0/O, 1/l/I) since admin will be sharing
@@ -28,6 +28,50 @@ export default function AdminCreateAccount() {
   const [copied, setCopied] = useState(false)
   const [needsReset, setNeedsReset] = useState('') // email that already has an account and needs the delete-then-recreate flow
   const [quickAddNotice, setQuickAddNotice] = useState(false) // true when arrived here via the "New Admission" shortcut on Manage Students
+
+  // Password reset requests submitted by students/parents from the Login
+  // page — admin reviews and taps one button to generate a fresh temp
+  // password for them.
+  const [resetRequests, setResetRequests] = useState([])
+  const [resetRequestsLoading, setResetRequestsLoading] = useState(true)
+  const [resolvingKey, setResolvingKey] = useState('') // `${studentId}-${role}` currently being resolved
+  const [resolvedResult, setResolvedResult] = useState(null) // { email, password, name, role }
+  const [resolvedCopied, setResolvedCopied] = useState(false)
+
+  const loadResetRequests = () => {
+    setResetRequestsLoading(true)
+    getPasswordResetRequests()
+      .then(setResetRequests)
+      .catch(() => setResetRequests([]))
+      .finally(() => setResetRequestsLoading(false))
+  }
+
+  useEffect(() => {
+    loadResetRequests()
+  }, [])
+
+  const handleResolveReset = async (req) => {
+    const key = `${req.rollNo}-${req.role}`
+    setResolvingKey(key)
+    setResolvedResult(null)
+    try {
+      const result = await resolvePasswordReset(req.rollNo, req.role)
+      setResolvedResult({ ...result, name: result.name || req.studentName })
+      loadResetRequests()
+    } catch (err) {
+      alert(err.message || 'Could not generate a new password. Please try again.')
+    } finally {
+      setResolvingKey('')
+    }
+  }
+
+  const copyResolvedDetails = () => {
+    if (!resolvedResult) return
+    const text = `SPARK Login\nRoll No: ${resolvedResult.studentId || resolvedResult.rollNo}\nRole: ${resolvedResult.role}\nEmail: ${resolvedResult.email}\nTemporary Password: ${resolvedResult.password}\n\nPlease log in and set your own password when prompted.`
+    navigator.clipboard.writeText(text)
+    setResolvedCopied(true)
+    setTimeout(() => setResolvedCopied(false), 2000)
+  }
 
   // Separate small form for linking an additional child to an EXISTING
   // parent login — for parents who have more than one child at SPARK.
@@ -207,6 +251,73 @@ export default function AdminCreateAccount() {
           </button>
         </div>
       )}
+
+      <div className="bg-white dark:bg-white/5 rounded-xl2 shadow-card p-6 border border-spark-ink/5 dark:border-white/10">
+        <h3 className="font-display font-bold text-spark-ink dark:text-white mb-1 flex items-center gap-2">
+          <FiKey className="text-spark-orange" /> Password Reset Requests
+        </h3>
+        <p className="text-sm text-spark-ink/50 dark:text-white/50 mb-5">
+          Students and parents can request a reset from the login page — tap Generate to create a
+          fresh temporary password and share it with them.
+        </p>
+
+        {resetRequestsLoading ? (
+          <p className="text-sm text-spark-ink/40 dark:text-white/40">Loading requests...</p>
+        ) : resetRequests.length === 0 ? (
+          <p className="text-sm text-spark-ink/40 dark:text-white/40">No pending requests right now.</p>
+        ) : (
+          <div className="space-y-3 mb-2">
+            {resetRequests.map((req) => {
+              const key = `${req.rollNo}-${req.role}`
+              return (
+                <div
+                  key={key}
+                  className="flex items-center justify-between gap-3 bg-spark-surface dark:bg-white/5 rounded-xl px-4 py-3"
+                >
+                  <div className="min-w-0">
+                    <p className="font-semibold text-sm text-spark-ink dark:text-white truncate">
+                      {req.studentName || req.rollNo} <span className="text-spark-ink/40 dark:text-white/40 font-normal">— {req.rollNo}</span>
+                    </p>
+                    <p className="text-xs text-spark-ink/50 dark:text-white/50 capitalize">
+                      {req.role} · requested {req.requestedOn || 'recently'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleResolveReset(req)}
+                    disabled={resolvingKey === key}
+                    className="shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-spark-gradient text-white text-xs font-bold shadow-soft hover:shadow-card-hover transition-all disabled:opacity-60"
+                  >
+                    <FiRefreshCw size={12} className={resolvingKey === key ? 'animate-spin' : ''} />
+                    {resolvingKey === key ? 'Generating...' : 'Generate'}
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {resolvedResult && (
+          <div className="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-xl p-4 mt-4">
+            <p className="flex items-center gap-2 font-display font-bold text-emerald-700 dark:text-emerald-400 mb-3 text-sm">
+              <FiCheckCircle /> New password generated for {resolvedResult.name}
+            </p>
+            <div className="bg-white dark:bg-white/5 rounded-xl p-3 space-y-1.5 mb-3 font-mono text-sm">
+              <p><span className="text-spark-ink/40 dark:text-white/40 font-sans">Email:</span> {resolvedResult.email}</p>
+              <p><span className="text-spark-ink/40 dark:text-white/40 font-sans">Temporary Password:</span> <span className="font-bold">{resolvedResult.password}</span></p>
+            </div>
+            <p className="text-xs text-emerald-700/80 dark:text-emerald-400/80 mb-3">
+              Share these details now — this password is shown only once and can't be retrieved again.
+            </p>
+            <button
+              onClick={copyResolvedDetails}
+              className="flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-white/10 border border-emerald-300 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-400 text-sm font-semibold hover:bg-emerald-50 transition-colors"
+            >
+              <FiCopy size={14} /> {resolvedCopied ? 'Copied!' : 'Copy Details'}
+            </button>
+          </div>
+        )}
+      </div>
 
       <div className="bg-white dark:bg-white/5 rounded-xl2 shadow-card p-6 border border-spark-ink/5 dark:border-white/10">
         <h3 className="font-display font-bold text-spark-ink dark:text-white mb-1 flex items-center gap-2">
