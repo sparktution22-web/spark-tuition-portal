@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiKey } from 'react-icons/fi'
 import { useForm } from 'react-hook-form'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -65,6 +66,7 @@ function StudentModal({ student, onClose, onSave }) {
 }
 
 export default function AdminStudents() {
+  const navigate = useNavigate()
   const [students, setStudents] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -88,6 +90,15 @@ export default function AdminStudents() {
     } else {
       const created = await addStudent(data)
       setStudents((list) => [...list, created])
+
+      // New Admission quick-add shortcut: right after a brand-new student
+      // is added, offer to jump straight into Create Login for them
+      // instead of making the admin find Manage Students -> Create Login
+      // as two separate trips through the sidebar.
+      const goCreateLogin = confirm(`${created.name || 'Student'} added! Create their login now?`)
+      if (goCreateLogin) {
+        navigate(`/app/admin/create-account?studentId=${encodeURIComponent(created.id)}`)
+      }
     }
   }
 

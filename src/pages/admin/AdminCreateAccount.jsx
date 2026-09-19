@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { createUserWithEmailAndPassword, signOut } from 'firebase/auth'
 import { FiUserPlus, FiCopy, FiCheckCircle, FiAlertCircle, FiUsers } from 'react-icons/fi'
 import { secondaryAuth } from '../../services/firebase/secondaryAuth.js'
@@ -17,6 +18,7 @@ function generateTempPassword() {
 }
 
 export default function AdminCreateAccount() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [students, setStudents] = useState([])
   const [selectedId, setSelectedId] = useState('')
   const [role, setRole] = useState('parent')
@@ -25,6 +27,7 @@ export default function AdminCreateAccount() {
   const [created, setCreated] = useState(null) // { email, password, name }
   const [copied, setCopied] = useState(false)
   const [needsReset, setNeedsReset] = useState('') // email that already has an account and needs the delete-then-recreate flow
+  const [quickAddNotice, setQuickAddNotice] = useState(false) // true when arrived here via the "New Admission" shortcut on Manage Students
 
   // Separate small form for linking an additional child to an EXISTING
   // parent login — for parents who have more than one child at SPARK.
@@ -37,6 +40,22 @@ export default function AdminCreateAccount() {
   useEffect(() => {
     getStudents().then(setStudents)
   }, [])
+
+  // New Admission quick-add shortcut: Manage Students can send us here as
+  // /app/admin/create-account?studentId=SPK035 right after adding a
+  // student, so the admin doesn't have to hunt for them again in the
+  // dropdown below. Only pre-selects once students have actually loaded
+  // and the id is real, then clears the query param so a page refresh
+  // doesn't keep re-triggering it.
+  useEffect(() => {
+    const presetId = searchParams.get('studentId')
+    if (presetId && students.length && students.some((s) => s.id === presetId)) {
+      setSelectedId(presetId)
+      setQuickAddNotice(true)
+      setSearchParams({}, { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [students])
 
   const selectedStudent = students.find((s) => s.id === selectedId)
 
@@ -90,12 +109,20 @@ export default function AdminCreateAccount() {
         <h3 className="font-display font-bold text-spark-ink dark:text-white mb-4 flex items-center gap-2">
           <FiUserPlus className="text-spark-orange" /> Create a Login
         </h3>
+
+        {quickAddNotice && (
+          <p className="text-sm text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-lg px-3 py-2.5 mb-4 flex items-start gap-2">
+            <FiCheckCircle className="shrink-0 mt-0.5" size={14} />
+            New admission added — student is pre-selected below. Just pick Parent or Student and create the login.
+          </p>
+        )}
+
         <form onSubmit={createAccount} className="space-y-4">
           <div>
             <label className="text-xs font-semibold text-spark-ink/50 dark:text-white/50 mb-1.5 block">Student</label>
             <select
               value={selectedId}
-              onChange={(e) => { setSelectedId(e.target.value); setCreated(null); setError(''); setNeedsReset('') }}
+              onChange={(e) => { setSelectedId(e.target.value); setCreated(null); setError(''); setNeedsReset(''); setQuickAddNotice(false) }}
               className="w-full px-4 py-2.5 rounded-xl border border-spark-ink/10 dark:border-white/10 dark:bg-transparent dark:text-white text-sm focus:border-spark-orange outline-none"
             >
               <option value="">Choose a student...</option>
@@ -141,10 +168,10 @@ export default function AdminCreateAccount() {
                 A login already exists for this email — to reset it, delete the old one first, then create it fresh.
               </p>
               <ol className="text-xs text-amber-800/90 dark:text-amber-400/90 space-y-1.5 list-decimal list-inside">
-                <li>Open <a href="https://console.firebase.google.com/project/sparkknowledgeacademy1/authentication/users" target="_blank" rel="noreferrer" className="underline font-semibold">Firebase Console \u2192 Users</a></li>
+                <li>Open <a href="https://console.firebase.google.com/project/sparkknowledgeacademy1/authentication/users" target="_blank" rel="noreferrer" className="underline font-semibold">Firebase Console → Users</a></li>
                 <li>Search for <span className="font-mono bg-white/50 dark:bg-black/20 px-1 rounded">{needsReset}</span></li>
-                <li>Click the three-dot menu next to it \u2192 <b>Delete account</b></li>
-                <li>Come back here and click <b>Create Login</b> again \u2014 same student, same login type</li>
+                <li>Click the three-dot menu next to it → <b>Delete account</b></li>
+                <li>Come back here and click <b>Create Login</b> again — same student, same login type</li>
               </ol>
             </div>
           )}
@@ -195,7 +222,7 @@ export default function AdminCreateAccount() {
             setLinkError('')
             setLinkSuccess('')
             if (!linkEmail.trim() || !linkStudentId) {
-              setLinkError('Enter the parent\u2019s existing login email and choose the child to add.')
+              setLinkError('Enter the parent’s existing login email and choose the child to add.')
               return
             }
             setLinking(true)
