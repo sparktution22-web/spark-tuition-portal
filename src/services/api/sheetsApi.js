@@ -344,6 +344,37 @@ export async function getLinkedStudents(email, studentId) {
   return callScript('getLinkedStudents', { email, studentId })
 }
 
+// Student/parent-triggered from the login page's Forgot Password form —
+// { studentId, role } logs a request admin can see and act on from
+// Create Login. Doesn't change anything in Firebase itself; only
+// resolvePasswordReset (below) actually does that, once admin approves.
+export async function requestPasswordReset(studentId, role) {
+  if (USE_MOCK) {
+    await delay()
+    return { requested: true }
+  }
+  return postScript_('requestPasswordReset', { studentId, role })
+}
+// Admin-only in the UI. Every reset request still awaiting action.
+export async function getPasswordResetRequests() {
+  if (USE_MOCK) {
+    await delay()
+    return []
+  }
+  return callScript('getPasswordResetRequests')
+}
+// Admin-only in the UI. { studentId, role } — generates a fresh
+// temporary password for an EXISTING login and forces a password-change
+// on next login, same UX as creating a brand-new account. Returns
+// { studentId, email, password, name, role }.
+export async function resolvePasswordReset(studentId, role) {
+  if (USE_MOCK) {
+    await delay()
+    return { studentId, email: `${String(studentId).toLowerCase()}-${role}@spark.local`, password: 'DEMO1234', name: 'Student', role }
+  }
+  return postScript_('resolvePasswordReset', { studentId, role })
+}
+
 // Admin-only in the UI. Posts one homework item for a class.
 export async function createHomework({ className, subject, description, dueDate }) {
   if (USE_MOCK) {
