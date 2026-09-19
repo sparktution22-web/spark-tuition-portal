@@ -4,7 +4,7 @@ import {
   FiGrid, FiCalendar, FiFileText, FiDollarSign, FiAward, FiDownload,
   FiBell, FiSettings, FiLogOut, FiUsers, FiX, FiClock,
   FiCheckSquare, FiUpload, FiCpu, FiCamera, FiUserPlus, FiMessageCircle, FiBookOpen, FiActivity, FiBook, FiHelpCircle, FiVideo,
-  FiChevronDown, FiSend
+  FiChevronDown, FiSend, FiUserX
 } from 'react-icons/fi'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import sparkLogo from '../assets/spark-logo.png'
@@ -73,6 +73,7 @@ const ADMIN_NAV = [
       { to: '/app/admin/login-activity', label: 'Login Activity', icon: FiActivity },
       { to: '/app/admin/create-account', label: 'Create Login', icon: FiUserPlus },
       { to: '/app/admin/students', label: 'Manage Students', icon: FiUsers },
+      { to: '/app/admin/left-students', label: 'Left Students', icon: FiUserX },
     ]
   },
   { type: 'link', to: '/app/admin/doubt-box', label: 'Doubt Box', icon: FiHelpCircle },
