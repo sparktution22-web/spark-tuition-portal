@@ -198,15 +198,32 @@ export async function getDashboardData(studentId, month = '2026-08') {
 // without persisting — real mode POSTs to the Apps Script doPost() handler.
 // Response shape matches reads: { success, data } — unwrapped here the
 // same way callScript() does for GET calls.
-async function postScript_(action, body) {
-  const res = await fetch(SCRIPT_URL, {
-    method: 'POST',
-    body: JSON.stringify({ action, ...body })
-  })
-  if (!res.ok) throw new Error(`Apps Script request failed: ${action}`)
-  const json = await res.json()
-  if (!json.success) throw new Error(json.error || `Apps Script error: ${action}`)
-  return json.data
+async function postScript_(action, body, attempt = 1) {
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action, ...body })
+    })
+    if (!res.ok) throw new Error(`Apps Script request failed: ${action} (HTTP ${res.status})`)
+    const json = await res.json()
+    if (!json.success) throw new Error(json.error || `Apps Script error: ${action}`)
+    return json.data
+  } catch (err) {
+    // Apps Script Web Apps can flake under concurrent load or right after
+    // a fresh deploy — same reasoning as callScript()'s retry above. This
+    // was missing here, which meant a write (like adding marks) could
+    // fail outright on the very first transient hiccup where a read
+    // would have quietly retried and succeeded. Only retry on an actual
+    // network/HTTP failure, never on a real business-logic error (like
+    // "No student found..."), since retrying a genuine validation error
+    // would just waste time before showing the same real problem.
+    const isHttpFailure = err.message && err.message.includes('Apps Script request failed')
+    if (isHttpFailure && attempt < 3) {
+      await delay(400 * attempt)
+      return postScript_(action, body, attempt + 1)
+    }
+    throw err
+  }
 }
 export async function addStudent(student) {
   if (USE_MOCK) {
