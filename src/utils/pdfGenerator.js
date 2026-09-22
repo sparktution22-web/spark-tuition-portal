@@ -475,3 +475,119 @@ export function generateYearlyReportPDF({ student, attendance, marks, fees, acad
   if (!skipSave) doc.save(`SPARK_FullYearRecord_${studentName.replace(/\s+/g, '_')}.pdf`)
   return doc
 }
+
+/**
+ * Generates the consolidated Monthly Fee Collection Report — every
+ * active student's fee status for one month in a single table, with a
+ * centre-wide totals strip up top and a grand-total row at the bottom
+ * of the table itself. This is the admin's own record/download, not
+ * something sent to a family, so it deliberately lists everyone rather
+ * than one student at a time like the Monthly Report above.
+ */
+export function generateMonthlyFeeReportPDF({ monthLabel, students, totals, skipSave = false }) {
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' })
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const margin = 40
+  let y = 40
+
+  // --- Header band ---
+  doc.setFillColor(...BRAND_ORANGE)
+  doc.rect(0, 0, pageWidth, 8, 'F')
+
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(22)
+  doc.setTextColor(...BRAND_ORANGE)
+  doc.text('SPARK', margin, (y += 36))
+
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(9)
+  doc.setTextColor(...MUTED)
+  doc.text('Educate  •  Empower  •  Enrich', margin, (y += 14))
+
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(13)
+  doc.setTextColor(...INK)
+  doc.text('Monthly Fee Collection Report', pageWidth - margin, 46, { align: 'right' })
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(9)
+  doc.setTextColor(...MUTED)
+  doc.text(monthLabel || '', pageWidth - margin, 60, { align: 'right' })
+
+  y += 18
+  doc.setDrawColor(230, 230, 230)
+  doc.line(margin, y, pageWidth - margin, y)
+  y += 24
+
+  // --- Totals summary strip ---
+  const fmtRupee = (n) => `₹${(Number(n) || 0).toLocaleString('en-IN')}`
+  autoTable(doc, {
+    startY: y,
+    margin: { left: margin, right: margin },
+    body: [[
+      `Students: ${totals.studentCount}`,
+      `Paid: ${totals.paidCount}`,
+      `Partial: ${totals.partialCount}`,
+      `Pending: ${totals.pendingCount}`,
+      `Total Expected: ${fmtRupee(totals.totalExpected)}`,
+      `Collected: ${fmtRupee(totals.totalCollected)}`,
+      `Pending: ${fmtRupee(totals.totalPending)}`,
+    ]],
+    styles: { fontSize: 8.5, cellPadding: 6, textColor: INK, fillColor: [255, 241, 230], halign: 'center' },
+    theme: 'plain',
+  })
+  y = doc.lastAutoTable.finalY + 20
+
+  // --- Per-student table ---
+  autoTable(doc, {
+    startY: y,
+    margin: { left: margin, right: margin },
+    head: [['Roll No', 'Student Name', 'Class', 'Total', 'Collected', 'Pending', 'Status', 'Paid On']],
+    body: students.map((s) => [
+      s.rollNo,
+      s.name,
+      s.class,
+      fmtRupee(s.total),
+      fmtRupee(s.collected),
+      fmtRupee(s.pending),
+      s.status,
+      s.paidOn || '—',
+    ]),
+    foot: [[
+      '', '', 'TOTAL',
+      fmtRupee(totals.totalExpected),
+      fmtRupee(totals.totalCollected),
+      fmtRupee(totals.totalPending),
+      '', '',
+    ]],
+    styles: { fontSize: 8.5, cellPadding: 5, textColor: INK },
+    headStyles: { fillColor: BRAND_ORANGE, textColor: [255, 255, 255], fontStyle: 'bold' },
+    footStyles: { fillColor: [255, 241, 230], textColor: INK, fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [255, 248, 242] },
+    theme: 'grid',
+    didParseCell: (data) => {
+      // Color the Status column so Paid/Partial/Pending are visible at a
+      // glance without reading every row.
+      if (data.section === 'body' && data.column.index === 6) {
+        const status = String(data.cell.raw || '').toLowerCase()
+        if (status === 'paid') data.cell.styles.textColor = [16, 122, 87]
+        else if (status === 'partial') data.cell.styles.textColor = [180, 120, 0]
+        else data.cell.styles.textColor = [200, 60, 60]
+      }
+    },
+  })
+
+  // --- Footer ---
+  const pageHeight = doc.internal.pageSize.getHeight()
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(7.5)
+  doc.setTextColor(...MUTED)
+  doc.text(
+    `Generated on ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}  ·  SPARK Tuition Management Portal`,
+    pageWidth / 2,
+    pageHeight - 16,
+    { align: 'center' }
+  )
+
+  if (!skipSave) doc.save(`SPARK_FeeCollectionReport_${String(monthLabel || '').replace(/\s+/g, '_')}.pdf`)
+  return doc
+}
