@@ -204,8 +204,22 @@ async function postScript_(action, body, attempt = 1) {
       method: 'POST',
       body: JSON.stringify({ action, ...body })
     })
-    if (!res.ok) throw new Error(`Apps Script request failed: ${action} (HTTP ${res.status})`)
-    const json = await res.json()
+    // TEMPORARY diagnostic — reads the raw response text BEFORE trying to
+    // parse it as JSON, and reports the real HTTP status/response type if
+    // parsing fails or the status isn't ok. The write can succeed on
+    // Google's side while the browser still sees a response it can't use
+    // (a redirect quirk, an HTML error page instead of JSON, etc) — this
+    // shows us exactly what came back instead of a generic message.
+    const rawText = await res.text()
+    if (!res.ok) {
+      throw new Error(`Apps Script request failed: ${action} (HTTP ${res.status} ${res.statusText}, type=${res.type}) | body: ${rawText.slice(0, 300)}`)
+    }
+    let json
+    try {
+      json = JSON.parse(rawText)
+    } catch (parseErr) {
+      throw new Error(`Apps Script response was not valid JSON for ${action} (HTTP ${res.status}, type=${res.type}) | body: ${rawText.slice(0, 300)}`)
+    }
     if (!json.success) throw new Error(json.error || `Apps Script error: ${action}`)
     return json.data
   } catch (err) {
