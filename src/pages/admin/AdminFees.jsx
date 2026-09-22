@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { FiDollarSign, FiCheckCircle, FiClock, FiPlusCircle, FiCalendar } from 'react-icons/fi'
-import { getStudents, getFeeRecord, updateFeeStatus, getFeeMonths, createFeeMonth } from '../../services/api/sheetsApi.js'
+import { FiDollarSign, FiCheckCircle, FiClock, FiPlusCircle, FiCalendar, FiDownload, FiFileText } from 'react-icons/fi'
+import { getStudents, getFeeRecord, updateFeeStatus, getFeeMonths, createFeeMonth, getMonthlyFeeReport } from '../../services/api/sheetsApi.js'
 import { formatCurrency } from '../../utils/format.js'
 import { SkeletonTable } from '../../components/Skeleton.jsx'
 import { loadCached, saveCache } from '../../utils/pageCache.js'
+import { generateMonthlyFeeReportPDF } from '../../utils/pdfGenerator.js'
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
@@ -59,6 +60,11 @@ export default function AdminFees() {
   const [creatingMonth, setCreatingMonth] = useState(false)
   const [createError, setCreateError] = useState('')
   const [createSuccess, setCreateSuccess] = useState('')
+
+  // Consolidated Monthly Fee Collection Report — every student's fee
+  // status for the selected month, downloadable as one PDF.
+  const [downloadingReport, setDownloadingReport] = useState(false)
+  const [reportError, setReportError] = useState('')
 
   useEffect(() => {
     const cached = loadCached('spark_cache_admin_students')
@@ -133,6 +139,23 @@ export default function AdminFees() {
     }
   }
 
+  const handleDownloadMonthlyFeeReport = async () => {
+    setReportError('')
+    setDownloadingReport(true)
+    try {
+      const report = await getMonthlyFeeReport(selectedMonth || undefined)
+      if (!report.students || report.students.length === 0) {
+        setReportError(`No fee records found for ${report.monthLabel || 'this month'} yet.`)
+        return
+      }
+      generateMonthlyFeeReportPDF({ monthLabel: report.monthLabel, students: report.students, totals: report.totals })
+    } catch (err) {
+      setReportError(err.message || 'Could not generate the report. Please try again.')
+    } finally {
+      setDownloadingReport(false)
+    }
+  }
+
   const selectedStudent = students.find((s) => s.id === selectedId)
 
   const submit = async (e) => {
@@ -189,6 +212,25 @@ export default function AdminFees() {
       </div>
       {createError && <p className="text-sm text-red-500 bg-red-50 rounded-lg px-3 py-2">{createError}</p>}
       {createSuccess && <p className="text-sm text-emerald-600 bg-emerald-50 rounded-lg px-3 py-2">{createSuccess}</p>}
+
+      <div className="bg-white dark:bg-white/5 rounded-xl2 shadow-card p-5 border border-spark-ink/5 dark:border-white/10 flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h3 className="font-display font-bold text-spark-ink dark:text-white mb-1 flex items-center gap-2">
+            <FiFileText className="text-spark-orange" /> Monthly Fee Collection Report
+          </h3>
+          <p className="text-xs text-spark-ink/50 dark:text-white/50">
+            One PDF listing every student for {selectedMonth ? monthKeyToLabel(selectedMonth) : 'the selected month'} — who paid, how much, who's pending, and the totals collected overall.
+          </p>
+        </div>
+        <button
+          onClick={handleDownloadMonthlyFeeReport}
+          disabled={downloadingReport || !selectedMonth}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white dark:bg-white/10 border-2 border-spark-orange text-spark-orange text-sm font-bold hover:bg-spark-orange hover:text-white transition-all disabled:opacity-60 shrink-0"
+        >
+          <FiDownload /> {downloadingReport ? 'Generating...' : 'Download Report'}
+        </button>
+      </div>
+      {reportError && <p className="text-sm text-red-500 bg-red-50 rounded-lg px-3 py-2">{reportError}</p>}
 
       <div className="flex flex-wrap gap-4">
         <div className="max-w-sm flex-1 min-w-[200px]">
