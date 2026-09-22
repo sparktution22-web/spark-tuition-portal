@@ -536,6 +536,46 @@ export async function getFeeMonths() {
   }
   return callScript('getFeeMonths')
 }
+// Admin-only in the UI. One consolidated Monthly Fee Collection Report —
+// every active student's Total/Collected/Pending/Status for a given
+// month (omit `month` for the most recent one with data), plus
+// centre-wide totals for the summary strip at the top of the report.
+export async function getMonthlyFeeReport(month) {
+  if (USE_MOCK) {
+    await delay()
+    const students = STUDENTS.map((s, i) => {
+      const total = 3000
+      const collected = i % 3 === 0 ? total : i % 3 === 1 ? Math.round(total * 0.5) : 0
+      return {
+        rollNo: s.rollNo,
+        name: s.name,
+        class: s.class,
+        total,
+        collected,
+        pending: total - collected,
+        status: collected >= total ? 'Paid' : collected > 0 ? 'Partial' : 'Pending',
+        paidOn: collected >= total ? '01.08.2026' : '',
+      }
+    })
+    const totalExpected = students.reduce((sum, s) => sum + s.total, 0)
+    const totalCollected = students.reduce((sum, s) => sum + s.collected, 0)
+    return {
+      monthKey: month || '2026-08',
+      monthLabel: 'August 2026',
+      students,
+      totals: {
+        studentCount: students.length,
+        paidCount: students.filter((s) => s.status === 'Paid').length,
+        partialCount: students.filter((s) => s.status === 'Partial').length,
+        pendingCount: students.filter((s) => s.status === 'Pending').length,
+        totalExpected,
+        totalCollected,
+        totalPending: totalExpected - totalCollected,
+      },
+    }
+  }
+  return callScript('getMonthlyFeeReport', { month })
+}
 // Admin-only in the UI. Creates a new month's Fees tab automatically —
 // duplicates the most recent existing one, carrying the roster and fee
 // amounts forward, and resets everyone to Pending for the new month.
