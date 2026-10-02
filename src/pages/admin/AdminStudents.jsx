@@ -56,6 +56,16 @@ function StudentModal({ student, onClose, onSave, saving, saveError }) {
               )}
             </div>
           </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-semibold text-spark-ink/50 dark:text-white/50 mb-1.5 block">Parent Name</label>
+              <input {...register('parentName')} placeholder="Optional" className="w-full px-4 py-2.5 rounded-xl border border-spark-ink/10 dark:border-white/10 dark:bg-transparent dark:text-white text-sm focus:border-spark-orange outline-none" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-spark-ink/50 dark:text-white/50 mb-1.5 block">Parent Mobile</label>
+              <input {...register('parentMobile')} placeholder="Optional" className="w-full px-4 py-2.5 rounded-xl border border-spark-ink/10 dark:border-white/10 dark:bg-transparent dark:text-white text-sm focus:border-spark-orange outline-none" />
+            </div>
+          </div>
           {saveError && <p className="text-sm text-red-500 bg-red-50 rounded-lg px-3 py-2">{saveError}</p>}
           <button type="submit" disabled={saving} className="w-full py-3 rounded-full bg-spark-gradient text-white font-bold shadow-soft hover:shadow-card-hover transition-all disabled:opacity-60">
             {saving ? 'Saving...' : student ? 'Save Changes' : 'Add Student'}
@@ -91,11 +101,11 @@ export default function AdminStudents() {
     setSaving(true)
     try {
       if (modal && modal !== 'add') {
-        const updated = await updateStudent(modal.id, { name: data.name, class: data.class })
+        const updated = await updateStudent(modal.id, { name: data.name, class: data.class, parentName: data.parentName, parentMobile: data.parentMobile })
         setStudents((list) => list.map((s) => (s.id === modal.id ? { ...s, ...updated } : s)))
         setModal(null)
       } else {
-        const created = await addStudent({ name: data.name, class: data.class })
+        const created = await addStudent({ name: data.name, class: data.class, parentName: data.parentName, parentMobile: data.parentMobile })
         setStudents((list) => [...list, created])
         setModal(null)
 
@@ -166,6 +176,7 @@ export default function AdminStudents() {
                   <th className="px-6 py-3 font-semibold">Name</th>
                   <th className="px-6 py-3 font-semibold">Class</th>
                   <th className="px-6 py-3 font-semibold">Roll No.</th>
+                  <th className="px-6 py-3 font-semibold hidden md:table-cell">Parent</th>
                   <th className="px-6 py-3 font-semibold text-right">Actions</th>
                 </tr>
               </thead>
@@ -180,6 +191,16 @@ export default function AdminStudents() {
                     </td>
                     <td className="px-6 py-3.5 text-spark-ink/70 dark:text-white/70">{s.class}</td>
                     <td className="px-6 py-3.5 font-mono text-spark-ink/70 dark:text-white/70">{s.rollNo}</td>
+                    <td className="px-6 py-3.5 text-spark-ink/50 dark:text-white/50 hidden md:table-cell">
+                      {s.parentName || s.parentMobile ? (
+                        <>
+                          {s.parentName && <span>{s.parentName}</span>}
+                          {s.parentMobile && <span className="block text-xs text-spark-ink/40 dark:text-white/40">{s.parentMobile}</span>}
+                        </>
+                      ) : (
+                        <span className="text-spark-ink/30 dark:text-white/30">—</span>
+                      )}
+                    </td>
                     <td className="px-6 py-3.5">
                       <div className="flex items-center justify-end gap-1.5">
                         <button onClick={() => handleManageLogin(s)} title="Manage login" className="p-2 rounded-lg hover:bg-spark-peach dark:hover:bg-white/10 text-spark-ink/50 dark:text-white/50 hover:text-spark-orange transition-colors">
