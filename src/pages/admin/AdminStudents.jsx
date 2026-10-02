@@ -8,12 +8,11 @@ import { SkeletonTable } from '../../components/Skeleton.jsx'
 import EmptyState from '../../components/EmptyState.jsx'
 import { FiUsers } from 'react-icons/fi'
 
-function StudentModal({ student, onClose, onSave }) {
+function StudentModal({ student, onClose, onSave, saving, saveError }) {
   const { register, handleSubmit, formState: { errors } } = useForm({ defaultValues: student || {} })
 
   const submit = (data) => {
     onSave(data)
-    onClose()
   }
 
   return (
@@ -45,19 +44,21 @@ function StudentModal({ student, onClose, onSave }) {
             </div>
             <div>
               <label className="text-xs font-semibold text-spark-ink/50 dark:text-white/50 mb-1.5 block">Roll No.</label>
-              <input type="number" {...register('rollNo', { required: true })} className="w-full px-4 py-2.5 rounded-xl border border-spark-ink/10 dark:border-white/10 dark:bg-transparent dark:text-white text-sm focus:border-spark-orange outline-none" />
+              {student ? (
+                // Immutable once created — it's literally the name of the
+                // student's tab in the Attendance sheet, so changing it
+                // here would silently point at the wrong tab everywhere.
+                <input value={student.rollNo} disabled className="w-full px-4 py-2.5 rounded-xl border border-spark-ink/10 dark:border-white/10 bg-spark-surface dark:bg-white/5 text-spark-ink/50 dark:text-white/50 text-sm font-mono" />
+              ) : (
+                <div className="w-full px-4 py-2.5 rounded-xl border border-dashed border-spark-ink/15 dark:border-white/15 text-spark-ink/40 dark:text-white/40 text-xs flex items-center">
+                  Auto-assigned
+                </div>
+              )}
             </div>
           </div>
-          <div>
-            <label className="text-xs font-semibold text-spark-ink/50 dark:text-white/50 mb-1.5 block">Parent Email</label>
-            <input type="email" {...register('parentEmail', { required: true })} className="w-full px-4 py-2.5 rounded-xl border border-spark-ink/10 dark:border-white/10 dark:bg-transparent dark:text-white text-sm focus:border-spark-orange outline-none" />
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-spark-ink/50 dark:text-white/50 mb-1.5 block">Student Email</label>
-            <input type="email" {...register('studentEmail', { required: true })} className="w-full px-4 py-2.5 rounded-xl border border-spark-ink/10 dark:border-white/10 dark:bg-transparent dark:text-white text-sm focus:border-spark-orange outline-none" />
-          </div>
-          <button type="submit" className="w-full py-3 rounded-full bg-spark-gradient text-white font-bold shadow-soft hover:shadow-card-hover transition-all">
-            {student ? 'Save Changes' : 'Add Student'}
+          {saveError && <p className="text-sm text-red-500 bg-red-50 rounded-lg px-3 py-2">{saveError}</p>}
+          <button type="submit" disabled={saving} className="w-full py-3 rounded-full bg-spark-gradient text-white font-bold shadow-soft hover:shadow-card-hover transition-all disabled:opacity-60">
+            {saving ? 'Saving...' : student ? 'Save Changes' : 'Add Student'}
           </button>
         </form>
       </motion.div>
@@ -71,6 +72,8 @@ export default function AdminStudents() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [modal, setModal] = useState(null) // null | 'add' | student object
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
 
   useEffect(() => {
     getStudents().then((data) => {
@@ -84,32 +87,50 @@ export default function AdminStudents() {
   )
 
   const handleSave = async (data) => {
-    if (modal && modal !== 'add') {
-      const updated = await updateStudent(modal.id, data)
-      setStudents((list) => list.map((s) => (s.id === modal.id ? { ...s, ...updated } : s)))
-    } else {
-      const created = await addStudent(data)
-      setStudents((list) => [...list, created])
+    setSaveError('')
+    setSaving(true)
+    try {
+      if (modal && modal !== 'add') {
+        const updated = await updateStudent(modal.id, { name: data.name, class: data.class })
+        setStudents((list) => list.map((s) => (s.id === modal.id ? { ...s, ...updated } : s)))
+        setModal(null)
+      } else {
+        const created = await addStudent({ name: data.name, class: data.class })
+        setStudents((list) => [...list, created])
+        setModal(null)
 
-      // New Admission quick-add shortcut: right after a brand-new student
-      // is added, offer to jump straight into Create Login for them
-      // instead of making the admin find Manage Students -> Create Login
-      // as two separate trips through the sidebar.
-      const goCreateLogin = confirm(`${created.name || 'Student'} added! Create their login now?`)
-      if (goCreateLogin) {
-        navigate(`/app/admin/create-account?studentId=${encodeURIComponent(created.id)}`)
+        // New Admission quick-add shortcut: right after a brand-new student
+        // is added, offer to jump straight into Create Login for them
+        // instead of making the admin find Manage Students -> Create Login
+        // as two separate trips through the sidebar.
+        const goCreateLogin = confirm(`${created.name || 'Student'} added as ${created.rollNo}! Create their login now?`)
+        if (goCreateLogin) {
+          navigate(`/app/admin/create-account?studentId=${encodeURIComponent(created.id)}`)
+        }
       }
+    } catch (err) {
+      setSaveError(err.message || 'Could not save. Please try again.')
+    } finally {
+      setSaving(false)
     }
   }
 
   const handleDelete = async (id) => {
-    if (!confirm('Remove this student? This cannot be undone.')) return
-    await deleteStudent(id)
-    setStudents((list) => list.filter((s) => s.id !== id))
+    if (!confirm('Remove this student? This cannot be undone — all of their attendance, fees and marks history will be deleted along with them. If they’ve just left the centre, use "Mark as Left" instead so their records are kept.')) return
+    try {
+      await deleteStudent(id)
+      setStudents((list) => list.filter((s) => s.id !== id))
+    } catch (err) {
+      alert(err.message || 'Could not delete this student. Please try again.')
+    }
   }
 
-  const handleResetPassword = (student) => {
-    alert(`Password reset link would be sent to ${student.parentEmail} (and ${student.studentEmail}).`)
+  // Jumps straight to Create Login / Password Reset Requests for this
+  // student, same destination the New Admission shortcut uses — there's
+  // no real parent/student email to send a reset link to (logins are
+  // synthetic roll-number-based), so the actual reset happens there.
+  const handleManageLogin = (student) => {
+    navigate(`/app/admin/create-account?studentId=${encodeURIComponent(student.id)}`)
   }
 
   if (loading) return <SkeletonTable rows={6} />
@@ -145,8 +166,6 @@ export default function AdminStudents() {
                   <th className="px-6 py-3 font-semibold">Name</th>
                   <th className="px-6 py-3 font-semibold">Class</th>
                   <th className="px-6 py-3 font-semibold">Roll No.</th>
-                  <th className="px-6 py-3 font-semibold hidden md:table-cell">Parent Email</th>
-                  <th className="px-6 py-3 font-semibold hidden lg:table-cell">Joined</th>
                   <th className="px-6 py-3 font-semibold text-right">Actions</th>
                 </tr>
               </thead>
@@ -161,11 +180,9 @@ export default function AdminStudents() {
                     </td>
                     <td className="px-6 py-3.5 text-spark-ink/70 dark:text-white/70">{s.class}</td>
                     <td className="px-6 py-3.5 font-mono text-spark-ink/70 dark:text-white/70">{s.rollNo}</td>
-                    <td className="px-6 py-3.5 text-spark-ink/50 dark:text-white/50 hidden md:table-cell">{s.parentEmail}</td>
-                    <td className="px-6 py-3.5 text-spark-ink/50 dark:text-white/50 hidden lg:table-cell">{s.joined}</td>
                     <td className="px-6 py-3.5">
                       <div className="flex items-center justify-end gap-1.5">
-                        <button onClick={() => handleResetPassword(s)} title="Reset password" className="p-2 rounded-lg hover:bg-spark-peach dark:hover:bg-white/10 text-spark-ink/50 dark:text-white/50 hover:text-spark-orange transition-colors">
+                        <button onClick={() => handleManageLogin(s)} title="Manage login" className="p-2 rounded-lg hover:bg-spark-peach dark:hover:bg-white/10 text-spark-ink/50 dark:text-white/50 hover:text-spark-orange transition-colors">
                           <FiKey size={15} />
                         </button>
                         <button onClick={() => setModal(s)} title="Edit" className="p-2 rounded-lg hover:bg-spark-peach dark:hover:bg-white/10 text-spark-ink/50 dark:text-white/50 hover:text-spark-orange transition-colors">
@@ -188,8 +205,10 @@ export default function AdminStudents() {
         {modal && (
           <StudentModal
             student={modal === 'add' ? null : modal}
-            onClose={() => setModal(null)}
+            onClose={() => { setModal(null); setSaveError('') }}
             onSave={handleSave}
+            saving={saving}
+            saveError={saveError}
           />
         )}
       </AnimatePresence>
