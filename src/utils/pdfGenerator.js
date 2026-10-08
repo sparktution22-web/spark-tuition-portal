@@ -3,6 +3,17 @@ import autoTable from 'jspdf-autotable'
 import { summarizeAttendance } from './format.js'
 import { gradeFromPercent } from '../services/api/mockData.js'
 
+// Attendance rows always print in date order, regardless of the order they
+// were entered in (dates are 'dd.MM.yyyy'). Stable, so same-day rows keep
+// their order. Works on a copy — never mutates the caller's array.
+function sortByDate(rows) {
+  const key = (d) => {
+    const p = String(d || '').split('.')
+    return p.length === 3 ? p[2] + p[1].padStart(2, '0') + p[0].padStart(2, '0') : '99999999'
+  }
+  return [...rows].sort((a, b) => (key(a.date) < key(b.date) ? -1 : key(a.date) > key(b.date) ? 1 : 0))
+}
+
 const BRAND_ORANGE = [255, 107, 0]
 const INK = [26, 26, 26]
 const MUTED = [120, 120, 120]
@@ -95,7 +106,7 @@ export function generateMonthlyReportPDF({ student, attendance, marks, monthLabe
     startY: y,
     margin: { left: margin, right: margin },
     head: [['S.No', 'Date', 'Day', 'Subject', 'Topic', 'Time In', 'Time Out', 'Duration', 'Status', 'Remarks']],
-    body: attendance.map((r) => [r.sNo, r.date, r.day, r.subject, r.topic, r.timeIn, r.timeOut, r.duration, r.status, r.remarks || '-']),
+    body: sortByDate(attendance).map((r, i) => [i + 1, r.date, r.day, r.subject, r.topic, r.timeIn, r.timeOut, r.duration, r.status, r.remarks || '-']),
     styles: { fontSize: 7.5, cellPadding: 4, textColor: INK },
     headStyles: { fillColor: BRAND_ORANGE, textColor: [255, 255, 255], fontStyle: 'bold' },
     alternateRowStyles: { fillColor: [255, 248, 242] },
