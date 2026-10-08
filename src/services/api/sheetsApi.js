@@ -407,12 +407,12 @@ export async function resolvePasswordReset(studentId, role) {
 }
 
 // Admin-only in the UI. Posts one homework item for a class.
-export async function createHomework({ className, subject, description, dueDate }) {
+export async function createHomework({ className, subject, description, dueDate, studentIds }) {
   if (USE_MOCK) {
     await delay()
     return { homeworkId: 'MOCKHW1', className, subject, description, dueDate }
   }
-  return postScript_('createHomework', { className, subject, description, dueDate })
+  return postScript_('createHomework', { className, subject, description, dueDate, studentIds })
 }
 // A student's own homework list — their class's items, each annotated
 // with whether THEY specifically have marked it done.
